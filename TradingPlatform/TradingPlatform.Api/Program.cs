@@ -72,6 +72,21 @@ using (var scope = app.Services.CreateScope())
             app.Logger.LogInformation("DB migration: added ResultJson column");
         }
     }
+    using (var pragma2 = conn.CreateCommand())
+    {
+        pragma2.CommandText = "PRAGMA table_info(Watchlist)";
+        using var reader2 = pragma2.ExecuteReader();
+        bool hasSortOrder = false;
+        while (reader2.Read())
+            if (reader2.GetString(1) == "SortOrder") { hasSortOrder = true; break; }
+        if (!hasSortOrder)
+        {
+            using var alter2 = conn.CreateCommand();
+            alter2.CommandText = "ALTER TABLE Watchlist ADD COLUMN SortOrder INTEGER NOT NULL DEFAULT 99";
+            alter2.ExecuteNonQuery();
+            app.Logger.LogInformation("DB migration: added SortOrder column to Watchlist");
+        }
+    }
     conn.Close();
 
     var configWatchlist = app.Configuration.GetSection("Watchlist").Get<List<TradingPlatform.Api.Services.WatchlistItem>>() ?? new();

@@ -11,6 +11,9 @@ public class WatchlistEntity
     [MaxLength(128)]
     public string? Name { get; set; }
 
+    // Lower = higher priority. 0 runs first (5 min before base schedule), 99 = default.
+    public int SortOrder { get; set; } = 99;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

@@ -22,7 +22,7 @@ public class WatchlistController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
-        var items = await _db.Watchlist.OrderBy(w => w.Ticker).ToListAsync();
+        var items = await _db.Watchlist.OrderBy(w => w.SortOrder).ThenBy(w => w.Ticker).ToListAsync();
         return Ok(items);
     }
 
@@ -41,6 +41,17 @@ public class WatchlistController : ControllerBase
         _db.Watchlist.Add(entity);
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(List), entity);
+    }
+
+    [HttpPatch("{ticker}/priority")]
+    public async Task<IActionResult> SetPriority(string ticker, [FromBody] int sortOrder)
+    {
+        ticker = ticker.Trim().ToUpperInvariant();
+        var entity = await _db.Watchlist.FindAsync(ticker);
+        if (entity == null) return NotFound();
+        entity.SortOrder = Math.Max(0, Math.Min(99, sortOrder));
+        await _db.SaveChangesAsync();
+        return Ok(entity);
     }
 
     [HttpDelete("{ticker}")]
