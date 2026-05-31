@@ -54,6 +54,26 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
 
+    // Lightweight schema migration: add ResultJson column if missing
+    var conn = db.Database.GetDbConnection();
+    conn.Open();
+    using (var pragma = conn.CreateCommand())
+    {
+        pragma.CommandText = "PRAGMA table_info(AnalysisRecords)";
+        using var reader = pragma.ExecuteReader();
+        bool hasResultJson = false;
+        while (reader.Read())
+            if (reader.GetString(1) == "ResultJson") { hasResultJson = true; break; }
+        if (!hasResultJson)
+        {
+            using var alter = conn.CreateCommand();
+            alter.CommandText = "ALTER TABLE AnalysisRecords ADD COLUMN ResultJson TEXT";
+            alter.ExecuteNonQuery();
+            app.Logger.LogInformation("DB migration: added ResultJson column");
+        }
+    }
+    conn.Close();
+
     var configWatchlist = app.Configuration.GetSection("Watchlist").Get<List<TradingPlatform.Api.Services.WatchlistItem>>() ?? new();
     if (configWatchlist.Count > 0 && !db.Watchlist.Any())
     {
@@ -94,5 +114,9 @@ app.MapPost("/api/push/test", async (IPushService push, CancellationToken ct) =>
 
 await HangfireScheduleConfigurer.RegisterRecurringJobsAsync(
     app.Services, app.Configuration, app.Logger);
+
+// Resume any jobs that were in-flight when the API last shut down
+var orchestrator = app.Services.GetRequiredService<IAnalysisOrchestrator>();
+await orchestrator.ResumeOrphanedJobsAsync();
 
 app.Run();

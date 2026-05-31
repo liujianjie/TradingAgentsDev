@@ -71,6 +71,14 @@ def load_apikeys(verbose: bool = True) -> dict:
         if verbose:
             print(f"[apikeys] provider '{active}' has empty api_key")
 
+    # Load data API keys
+    data_apis = cfg.get("data_apis", {})
+    av_key = data_apis.get("alpha_vantage", "") if isinstance(data_apis, dict) else ""
+    if av_key:
+        os.environ["ALPHA_VANTAGE_API_KEY"] = av_key
+        if verbose:
+            print("[apikeys] alpha_vantage key loaded")
+
     return cfg
 
 

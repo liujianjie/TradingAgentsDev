@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TradingPlatform.Api.Data;
 using TradingPlatform.Api.Models;
 
@@ -6,6 +7,7 @@ namespace TradingPlatform.Api.Services;
 public interface IAnalysisOrchestrator
 {
     Task<string> TriggerAndPushAsync(string ticker, string date, CancellationToken ct = default);
+    Task ResumeOrphanedJobsAsync();
 }
 
 public class AnalysisOrchestrator : IAnalysisOrchestrator
@@ -101,6 +103,7 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                     record.Status = job.Status;
                     record.Decision = job.Result?.Decision;
                     record.ReportMarkdown = markdown;
+                    record.ResultJson = job.Result != null ? JsonSerializer.Serialize(job.Result) : null;
                     record.Error = job.Error;
                     record.UpdatedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync();
@@ -129,5 +132,53 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
         }, CancellationToken.None);
 
         return pythonJobId;
+    }
+
+    public async Task ResumeOrphanedJobsAsync()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var orphans = db.AnalysisRecords
+            .Where(r => r.Status == "queued" || r.Status == "running")
+            .ToList();
+
+        if (orphans.Count == 0) return;
+
+        _logger.LogInformation("Resuming {Count} orphaned job(s) after restart", orphans.Count);
+        foreach (var record in orphans)
+        {
+            var jobId = record.JobId;
+            var ticker = record.Ticker;
+            _ = Task.Run(async () =>
+            {
+                using var s = _scopeFactory.CreateScope();
+                var analysis = s.ServiceProvider.GetRequiredService<IAnalysisService>();
+                var push = s.ServiceProvider.GetRequiredService<IPushService>();
+                var dbInner = s.ServiceProvider.GetRequiredService<AppDbContext>();
+                try
+                {
+                    var job = await analysis.WaitForCompletionAsync(jobId, CancellationToken.None);
+                    var (title, markdown) = ReportFormatter.Format(ticker, job);
+                    var r = await dbInner.AnalysisRecords.FindAsync(jobId);
+                    if (r != null)
+                    {
+                        r.Status = job.Status;
+                        r.Decision = job.Result?.Decision;
+                        r.ReportMarkdown = markdown;
+                        r.ResultJson = job.Result != null ? JsonSerializer.Serialize(job.Result) : null;
+                        r.Error = job.Error;
+                        r.UpdatedAt = DateTime.UtcNow;
+                        await dbInner.SaveChangesAsync();
+                    }
+                    await push.SendAsync(title, markdown, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Resume orphan failed {JobId}", jobId);
+                    var r = await dbInner.AnalysisRecords.FindAsync(jobId);
+                    if (r != null) { r.Status = "failed"; r.Error = ex.Message; r.UpdatedAt = DateTime.UtcNow; await dbInner.SaveChangesAsync(); }
+                }
+            });
+        }
     }
 }

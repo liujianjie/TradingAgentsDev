@@ -8,8 +8,12 @@
     <view :class="['status-card', `status-${status}`]">
       <text class="status-label">状态</text>
       <text class="status-value">{{ statusText }}</text>
-      <view class="progress-bar" v-if="status === 'queued' || status === 'running'">
-        <view class="progress-fill" :style="{ width: progress + '%' }"></view>
+      <view v-if="status === 'queued' || status === 'running'" class="running-info">
+        <view class="spinner-row">
+          <view class="spinner"></view>
+          <text class="hint-text">{{ runningHint }}</text>
+        </view>
+        <text class="elapsed">已等待 {{ elapsedMin }} 分钟，分析通常需要 10-30 分钟</text>
       </view>
     </view>
 
@@ -62,8 +66,24 @@ const status = ref('queued')
 const progress = ref(0)
 const result = ref(null)
 const error = ref('')
+const startTime = ref(Date.now())
 
 let pollTimer = null
+let hintTimer = null
+
+const HINTS = [
+  '正在获取市场数据...',
+  '技术面 Agent 分析中...',
+  '情感面 Agent 分析中...',
+  '新闻面 Agent 分析中...',
+  '基本面 Agent 分析中...',
+  '多空辩论中...',
+  '风险评估中...',
+  '生成最终决策...',
+]
+const hintIdx = ref(0)
+const runningHint = computed(() => HINTS[hintIdx.value % HINTS.length])
+const elapsedMin = computed(() => Math.floor((Date.now() - startTime.value) / 60000))
 
 const statusText = computed(() => {
   return {
@@ -77,14 +97,17 @@ const statusText = computed(() => {
 onLoad((options) => {
   jobId.value = options?.jobId || ''
   ticker.value = options?.ticker || ''
+  startTime.value = Date.now()
   if (jobId.value) {
     poll()
     pollTimer = setInterval(poll, 5000)
+    hintTimer = setInterval(() => { hintIdx.value++ }, 4000)
   }
 })
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
+  if (hintTimer) clearInterval(hintTimer)
 })
 
 async function poll() {
@@ -96,10 +119,8 @@ async function poll() {
     result.value = job.result
     error.value = job.error || ''
     if (status.value === 'completed' || status.value === 'failed') {
-      if (pollTimer) {
-        clearInterval(pollTimer)
-        pollTimer = null
-      }
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+      if (hintTimer) { clearInterval(hintTimer); hintTimer = null }
     }
   } catch (e) {
     error.value = '查询任务失败：' + (e.message || e)
@@ -212,6 +233,36 @@ function goBack() {
   color: #555;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.running-info {
+  margin-top: 16rpx;
+}
+.spinner-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.spinner {
+  width: 32rpx;
+  height: 32rpx;
+  border: 4rpx solid #bbdefb;
+  border-top-color: #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.hint-text {
+  font-size: 26rpx;
+  color: #1976d2;
+}
+.elapsed {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #90a4ae;
 }
 
 .actions {

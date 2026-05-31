@@ -30,6 +30,7 @@ public class AnalysisRecord
 
     public string? Decision { get; set; }
     public string? ReportMarkdown { get; set; }
+    public string? ResultJson { get; set; }
     public string? Error { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

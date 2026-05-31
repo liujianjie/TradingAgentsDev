@@ -43,7 +43,8 @@
     "send_key": "SCT-REPLACE-ME"
   },
   "data_apis": {
-    "alpha_vantage": null,
+    "_README": "Alpha Vantage 免费 Key 申请：https://www.alphavantage.co/support/#api-key，见 docs/setup-alpha-vantage.md",
+    "alpha_vantage": "REPLACE-ME",
     "finnhub": null
   }
 }
