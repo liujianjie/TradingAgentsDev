@@ -249,3 +249,4 @@ uniapp-frontend/.hbuilderx/
 
 # Personal dev notes
 devnote/
+config/config apikey.txt
