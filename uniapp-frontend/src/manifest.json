@@ -1,0 +1,32 @@
+{
+  "name": "TradingAgents",
+  "appid": "__UNI__TRADINGAGENTS",
+  "description": "TradingAgents 智能投研助手",
+  "versionName": "0.1.0",
+  "versionCode": "1",
+  "transformPx": false,
+  "h5": {
+    "title": "TradingAgents Dashboard",
+    "router": {
+      "mode": "hash",
+      "base": "/"
+    },
+    "devServer": {
+      "port": 5173,
+      "https": false,
+      "proxy": {
+        "/api": {
+          "target": "http://localhost:8080",
+          "changeOrigin": true
+        }
+      }
+    }
+  },
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    }
+  },
+  "vueVersion": "3"
+}

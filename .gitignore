@@ -221,3 +221,31 @@ __marimo__/
 # Enterprise env file (secrets) and generated run reports
 .env.enterprise
 reports/
+
+# .NET / TradingPlatform
+TradingPlatform/**/bin/
+TradingPlatform/**/obj/
+TradingPlatform/**/appsettings.local.json
+TradingPlatform/**/appsettings.Development.local.json
+*.user
+.vs/
+
+# Reports / runtime output (already partial)
+reports/
+
+# API Keys 配置（绝对不能提交）
+config/apikeys.local.json
+config/apikeys.*.local.json
+
+# SQLite runtime database
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# UniApp frontend build output and dependencies
+uniapp-frontend/node_modules/
+uniapp-frontend/dist/
+uniapp-frontend/.hbuilderx/
+
+# Personal dev notes
+devnote/

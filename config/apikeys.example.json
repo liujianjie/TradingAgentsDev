@@ -1,0 +1,49 @@
+{
+  "_README": "复制本文件为 apikeys.local.json，填入真实值。apikeys.local.json 不会进 Git。",
+  "active_provider": "deepseek",
+  "providers": {
+    "openai": {
+      "api_key": "sk-REPLACE-ME",
+      "deep_think_model": "gpt-5.5",
+      "quick_think_model": "gpt-5.4-mini",
+      "base_url": null
+    },
+    "deepseek": {
+      "api_key": "sk-REPLACE-ME",
+      "deep_think_model": "deepseek-chat",
+      "quick_think_model": "deepseek-chat",
+      "base_url": null
+    },
+    "google": {
+      "api_key": "REPLACE-ME",
+      "deep_think_model": "gemini-2.0-flash",
+      "quick_think_model": "gemini-2.0-flash",
+      "base_url": null
+    },
+    "anthropic": {
+      "api_key": "sk-ant-REPLACE-ME",
+      "deep_think_model": "claude-sonnet-4-6",
+      "quick_think_model": "claude-haiku-4-5-20251001",
+      "base_url": null
+    },
+    "qwen-cn": {
+      "api_key": "sk-REPLACE-ME",
+      "deep_think_model": "qwen-max",
+      "quick_think_model": "qwen-turbo",
+      "base_url": null
+    },
+    "glm-cn": {
+      "api_key": "REPLACE-ME",
+      "deep_think_model": "glm-4-plus",
+      "quick_think_model": "glm-4-flash",
+      "base_url": null
+    }
+  },
+  "serverchan": {
+    "send_key": "SCT-REPLACE-ME"
+  },
+  "data_apis": {
+    "alpha_vantage": null,
+    "finnhub": null
+  }
+}
