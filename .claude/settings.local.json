@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+	  "Read",
+      "Write",
+      "Edit",
+      "Search",
+      "Bash",
+      "Grep",
+      "WebFetch",
+      "Glob",
+      "WebSearch",
+      "PowerShell",
+      "Bash(xargs ls -lh)",
+      "Bash(dotnet --version)",
+      "Bash(pip install *)",
+      "Bash(uv add *)",
+      "Bash(python -c \"import fastapi; print\\(fastapi.__version__\\)\")",
+      "Bash(pip list *)",
+      "Bash(where uvicorn *)",
+      "Bash(uv run *)"
+    ]
+  }
+}
