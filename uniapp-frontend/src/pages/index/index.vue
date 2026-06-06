@@ -1,57 +1,68 @@
 <template>
-  <view class="container">
-    <view class="header">
-      <text class="title">TradingAgents</text>
-      <text class="subtitle">智能投研助手</text>
+  <view class="page">
+    <!-- 渐变头 -->
+    <view class="grad-header header">
+      <view class="brand-row">
+        <text class="title">TradingAgents</text>
+        <view class="status-chip">
+          <view :class="['dot', isHealthy ? 'dot-on' : 'dot-off']"></view>
+          <text class="status-text">{{ statusText }}</text>
+        </view>
+      </view>
+      <text class="subtitle">AI 多智能体 · 智能投研助手</text>
     </view>
 
-    <view class="status-card">
-      <text class="status-label">后端状态</text>
-      <text :class="['status-value', isHealthy ? 'healthy' : 'unhealthy']">
-        {{ statusText }}
-      </text>
-    </view>
+    <view class="body">
+      <!-- 手动触发卡片 -->
+      <view class="card trigger-card">
+        <text class="card-title">手动触发分析</text>
 
-    <!-- 手动触发卡片 -->
-    <view class="trigger-card">
-      <text class="card-title">手动触发分析</text>
+        <view class="field">
+          <text class="label">股票</text>
+          <picker :range="tickerOptions" :range-key="'label'" @change="onPickerChange">
+            <view class="picker-row">
+              <text :class="['picker-val', !selectedTicker && 'placeholder']">
+                {{ selectedTickerLabel || '选择股票' }}
+              </text>
+              <text class="picker-arrow">▾</text>
+            </view>
+          </picker>
+        </view>
 
-      <view class="field">
-        <text class="label">股票</text>
-        <picker :range="tickerOptions" :range-key="'label'" @change="onPickerChange">
-          <view class="picker-row">
-            <text class="picker-val">{{ selectedTicker || '选择股票' }}</text>
-            <text class="picker-arrow">▾</text>
-          </view>
-        </picker>
+        <view class="field">
+          <text class="label">日期</text>
+          <picker mode="date" :value="selectedDate" @change="onDateChange">
+            <view class="picker-row">
+              <text class="picker-val">{{ selectedDate }}</text>
+              <text class="picker-arrow">▾</text>
+            </view>
+          </picker>
+        </view>
+
+        <button
+          class="btn-primary trigger-btn"
+          :disabled="!selectedTicker || triggering"
+          @click="handleTrigger"
+        >
+          {{ triggering ? '触发中...' : '开始分析' }}
+        </button>
       </view>
 
-      <view class="field">
-        <text class="label">日期</text>
-        <picker mode="date" :value="selectedDate" @change="onDateChange">
-          <view class="picker-row">
-            <text class="picker-val">{{ selectedDate }}</text>
-            <text class="picker-arrow">▾</text>
-          </view>
-        </picker>
+      <!-- 快捷入口 -->
+      <view class="quick-row">
+        <view class="card quick-card" @click="goWatchlist">
+          <text class="quick-icon">⭐</text>
+          <text class="quick-label">管理自选股</text>
+        </view>
+        <view class="card quick-card" @click="goHistory">
+          <text class="quick-icon">🕑</text>
+          <text class="quick-label">查看历史</text>
+        </view>
       </view>
 
-      <button
-        class="btn btn-primary"
-        :disabled="!selectedTicker || triggering"
-        @click="handleTrigger"
-      >
-        {{ triggering ? '触发中...' : '开始分析' }}
-      </button>
-    </view>
-
-    <view class="actions">
-      <button class="btn" @click="goWatchlist">管理自选股</button>
-      <button class="btn" @click="goHistory">查看历史</button>
-    </view>
-
-    <view class="footer">
-      <text class="muted">v0.1.0 · 阶段二</text>
+      <view class="footer">
+        <text class="muted">v0.1.0 · 阶段二</text>
+      </view>
     </view>
   </view>
 </template>
@@ -70,6 +81,8 @@ const tickerOptions = computed(() =>
   watchlist.value.map(w => ({ label: `${w.ticker}  ${w.name || ''}`.trim(), value: w.ticker }))
 )
 const selectedTicker = ref('')
+const selectedTickerLabel = computed(() =>
+  tickerOptions.value.find(o => o.value === selectedTicker.value)?.label || '')
 
 function todayStr() {
   const d = new Date()
@@ -110,7 +123,7 @@ async function checkHealth() {
     statusText.value = isHealthy.value ? '在线' : '异常'
   } catch {
     isHealthy.value = false
-    statusText.value = '离线（后端未启动？）'
+    statusText.value = '离线'
   }
 }
 
@@ -128,98 +141,92 @@ onMounted(() => { checkHealth(); loadWatchlist() })
 </script>
 
 <style lang="scss" scoped>
-.container {
-  padding: 32rpx;
-  min-height: 100vh;
-}
+.page { min-height: 100vh; }
+
+/* 渐变头 */
 .header {
-  text-align: center;
-  padding: 48rpx 0 32rpx;
+  padding: 56rpx 32rpx 48rpx;
+}
+.brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .title {
-  display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #1976d2;
+  font-size: 52rpx;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1rpx;
 }
 .subtitle {
   display: block;
-  margin-top: 12rpx;
+  margin-top: 14rpx;
   font-size: 26rpx;
-  color: #666;
+  color: rgba(255, 255, 255, 0.85);
 }
-.status-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx 32rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,.05);
+.status-chip {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10rpx;
+  background: rgba(255, 255, 255, 0.18);
+  padding: 8rpx 20rpx;
+  border-radius: $radius-pill;
 }
-.status-label { font-size: 28rpx; color: #666; }
-.status-value { font-size: 30rpx; font-weight: 600; }
-.healthy { color: #4caf50; }
-.unhealthy { color: #f44336; }
+.dot { width: 14rpx; height: 14rpx; border-radius: 50%; }
+.dot-on { background: #4ade80; box-shadow: 0 0 8rpx #4ade80; }
+.dot-off { background: #f87171; }
+.status-text { font-size: 24rpx; color: #fff; }
+
+/* 主体（上移盖住渐变头底部，做出层次） */
+.body {
+  padding: 0 24rpx;
+  margin-top: -24rpx;
+}
 
 .trigger-card {
-  background: #fff;
-  border-radius: 16rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,.05);
 }
 .card-title {
   display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #333;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $text;
   margin-bottom: 24rpx;
 }
-.field {
-  margin-bottom: 20rpx;
-}
+.field { margin-bottom: 22rpx; }
 .label {
   display: block;
   font-size: 24rpx;
-  color: #888;
-  margin-bottom: 8rpx;
+  color: $text-3;
+  margin-bottom: 10rpx;
 }
 .picker-row {
-  background: #f5f7fa;
-  border-radius: 10rpx;
-  padding: 20rpx 24rpx;
+  background: $surface-2;
+  border-radius: $radius-sm;
+  padding: 22rpx 24rpx;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.picker-val { font-size: 28rpx; color: #333; }
-.picker-arrow { font-size: 24rpx; color: #999; }
+.picker-val { font-size: 28rpx; color: $text; }
+.picker-val.placeholder { color: $text-3; }
+.picker-arrow { font-size: 24rpx; color: $text-3; }
+.trigger-btn { width: 100%; padding: 24rpx; font-size: 30rpx; margin-top: 8rpx; }
 
-.actions {
+/* 快捷入口 */
+.quick-row { display: flex; gap: 20rpx; }
+.quick-card {
+  flex: 1;
+  padding: 36rpx 0;
   display: flex;
   flex-direction: column;
-  gap: 20rpx;
+  align-items: center;
+  gap: 12rpx;
 }
-.btn {
-  background: #fff;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 12rpx;
-  padding: 22rpx;
-  font-size: 30rpx;
-}
-.btn-primary {
-  background: #1976d2;
-  color: #fff;
-  border-color: #1976d2;
-  margin-bottom: 8rpx;
-}
-.btn-primary[disabled] { background: #b0bec5; border-color: #b0bec5; }
+.quick-icon { font-size: 48rpx; }
+.quick-label { font-size: 28rpx; color: $text-2; font-weight: 600; }
 
-.footer {
-  margin-top: 60rpx;
-  text-align: center;
-}
-.muted { font-size: 24rpx; color: #999; }
+.footer { margin-top: 56rpx; text-align: center; }
+.muted { font-size: 24rpx; color: $text-3; }
 </style>

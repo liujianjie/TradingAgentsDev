@@ -1,44 +1,37 @@
 <template>
   <view class="container">
-    <view class="add-card">
-      <view class="row">
-        <input
-          v-model="newTicker"
-          class="input"
-          placeholder="股票代码（如 AAPL / 600519.SS / 0700.HK）"
-          @confirm="handleAdd"
-        />
-      </view>
-      <view class="row">
-        <input
-          v-model="newName"
-          class="input"
-          placeholder="名称（可选）"
-          @confirm="handleAdd"
-        />
-      </view>
-      <button class="btn btn-primary" :disabled="!newTicker.trim()" @click="handleAdd">
+    <view class="card add-card">
+      <text class="card-title">添加自选股</text>
+      <input
+        v-model="newTicker"
+        class="input"
+        placeholder="代码（如 AAPL / 600519.SS / 0700.HK）"
+        @confirm="handleAdd"
+      />
+      <input
+        v-model="newName"
+        class="input"
+        placeholder="名称（可选）"
+        @confirm="handleAdd"
+      />
+      <button class="btn-primary add-btn" :disabled="!newTicker.trim()" @click="handleAdd">
         添加
       </button>
     </view>
 
-    <view v-if="store.loading" class="muted">加载中...</view>
-    <view v-else-if="store.error" class="error">{{ store.error }}</view>
-    <view v-else-if="store.items.length === 0" class="muted">暂无自选股，请先添加</view>
+    <view v-if="store.loading" class="placeholder">加载中...</view>
+    <view v-else-if="store.error" class="placeholder err">{{ store.error }}</view>
+    <view v-else-if="store.items.length === 0" class="placeholder">暂无自选股，请先添加</view>
 
     <view v-else class="list">
-      <view
-        v-for="item in store.items"
-        :key="item.ticker"
-        class="row-item"
-      >
+      <view v-for="item in store.items" :key="item.ticker" class="card row-item">
         <view class="row-info">
           <text class="ticker">{{ item.ticker }}</text>
           <text class="name">{{ item.name || '—' }}</text>
         </view>
         <view class="row-actions">
-          <button class="btn btn-small" @click="handleAnalyze(item.ticker)">分析</button>
-          <button class="btn btn-small btn-danger" @click="handleRemove(item.ticker)">删除</button>
+          <button class="mini-btn analyze" @click="handleAnalyze(item.ticker)">分析</button>
+          <button class="mini-btn danger" @click="handleRemove(item.ticker)">删除</button>
         </view>
       </view>
     </view>
@@ -101,91 +94,55 @@ onMounted(() => store.fetch())
 </script>
 
 <style lang="scss" scoped>
-.container {
-  padding: 24rpx;
-}
-.add-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
+.container { padding: 24rpx; }
+
+.add-card { padding: 32rpx; margin-bottom: 24rpx; }
+.card-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: $text;
   margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-}
-.row {
-  margin-bottom: 16rpx;
 }
 .input {
   width: 100%;
-  padding: 16rpx;
-  border: 1rpx solid #e0e0e0;
-  border-radius: 8rpx;
-  font-size: 28rpx;
-  background: #fafafa;
-}
-.btn {
+  padding: 22rpx 24rpx;
   border: none;
-  padding: 18rpx 32rpx;
-  border-radius: 8rpx;
+  border-radius: $radius-sm;
   font-size: 28rpx;
-  background: #f0f0f0;
+  background: $surface-2;
+  margin-bottom: 18rpx;
 }
-.btn-primary {
-  background: #1976d2;
-  color: #fff;
-}
-.btn-primary[disabled] {
-  background: #b0bec5;
-}
-.btn-small {
-  font-size: 24rpx;
-  padding: 8rpx 20rpx;
-  margin-left: 12rpx;
-}
-.btn-danger {
-  background: #fee;
-  color: #c62828;
-}
-.list {
-  background: #fff;
-  border-radius: 16rpx;
-  overflow: hidden;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
-}
+.add-btn { width: 100%; padding: 24rpx; font-size: 30rpx; margin-top: 6rpx; }
+
+.list { display: flex; flex-direction: column; gap: 16rpx; }
 .row-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  padding: 28rpx 32rpx;
 }
-.row-item:last-child {
-  border-bottom: none;
+.row-info { display: flex; flex-direction: column; }
+.ticker { font-size: 32rpx; font-weight: 700; color: $text; letter-spacing: 1rpx; }
+.name { font-size: 24rpx; color: $text-3; margin-top: 6rpx; }
+.row-actions { display: flex; gap: 16rpx; }
+
+.mini-btn {
+  font-size: 26rpx;
+  padding: 12rpx 28rpx;
+  border-radius: $radius-pill;
+  line-height: 1.4;
+  margin: 0;
 }
-.row-info {
-  display: flex;
-  flex-direction: column;
-}
-.ticker {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #333;
-}
-.name {
-  font-size: 24rpx;
-  color: #999;
-  margin-top: 4rpx;
-}
-.row-actions {
-  display: flex;
-}
-.muted {
+.mini-btn::after { border: none; }
+.analyze { background: rgba(79, 110, 247, 0.1); color: $primary; }
+.danger { background: $sell-bg; color: $sell; }
+
+.placeholder {
   text-align: center;
-  color: #999;
-  padding: 80rpx 0;
+  color: $text-3;
+  padding: 100rpx 0;
+  font-size: 28rpx;
 }
-.error {
-  text-align: center;
-  color: #c62828;
-  padding: 32rpx;
-}
+.placeholder.err { color: $sell; }
 </style>

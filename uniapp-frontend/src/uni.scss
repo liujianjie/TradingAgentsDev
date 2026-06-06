@@ -1,0 +1,32 @@
+/**
+ * 清新金融卡片风 — 设计令牌（全局自动注入，所有 <style lang="scss"> 可直接用）
+ */
+
+// 背景与表面
+$bg:          #f4f6fb;   // 页面底色，带一点冷调
+$surface:     #ffffff;   // 卡片
+$surface-2:   #f7f8fc;   // 内嵌输入/次级表面
+
+// 主色与渐变头
+$primary:      #4f6ef7;  // 靛蓝主色
+$primary-deep: #3a56e0;
+$grad-start:   #5b7cfa;  // 渐变头起
+$grad-end:     #8a6cf6;  // 渐变头止
+
+// 交易信号色
+$buy:     #16a34a;  $buy-bg:  #e7f7ec;
+$sell:    #dc2626;  $sell-bg: #fdeaea;
+$hold:    #d97706;  $hold-bg: #fef3e2;
+
+// 文字层级
+$text:    #1f2433;  // 主文字
+$text-2:  #5b6275;  // 次文字
+$text-3:  #9aa0b4;  // 弱文字
+$line:    #eceef3;  // 分隔线
+
+// 圆角 / 阴影
+$radius:     20rpx;
+$radius-sm:  12rpx;
+$radius-pill: 999rpx;
+$shadow:    0 8rpx 24rpx rgba(40, 50, 90, 0.06);
+$shadow-lg: 0 12rpx 32rpx rgba(40, 50, 90, 0.10);

@@ -1,69 +1,60 @@
 <template>
   <view class="container">
-    <view class="header-card">
-      <text class="ticker">{{ ticker || '—' }}</text>
-      <text class="job-id">任务 {{ jobId.slice(0, 8) }}...</text>
-    </view>
-
-    <view :class="['status-card', `status-${status}`]">
-      <text class="status-label">状态</text>
-      <text class="status-value">{{ statusText }}</text>
-      <view v-if="status === 'queued' || status === 'running'" class="running-info">
-        <view class="spinner-row">
-          <view class="spinner"></view>
-          <text class="hint-text">{{ runningHint }}</text>
+    <!-- 渐变信号头 -->
+    <view class="grad-header header">
+      <view class="header-top">
+        <text class="ticker">{{ ticker || '—' }}</text>
+        <view v-if="status === 'completed' && signal" :class="['pill', `pill-${signal.key}`, 'sig']">
+          {{ signal.label }}
         </view>
-        <text class="elapsed">已等待 {{ elapsedMin }} 分钟，分析通常需要 10-30 分钟</text>
+        <view v-else-if="status === 'completed'" class="pill pill-muted sig">已完成</view>
       </view>
+      <text class="job-meta">任务 {{ jobId.slice(0, 8) }} · {{ statusText }}</text>
     </view>
 
-    <view v-if="error" class="error-card">
-      <text class="error-title">错误</text>
+    <!-- 运行中 -->
+    <view v-if="status === 'queued' || status === 'running'" class="card running-card">
+      <view class="spinner-row">
+        <view class="spinner"></view>
+        <text class="hint-text">{{ runningHint }}</text>
+      </view>
+      <text class="elapsed">已等待 {{ elapsedMin }} 分钟 · 分析通常需要 10–30 分钟</text>
+    </view>
+
+    <!-- 失败 -->
+    <view v-if="error" class="card error-card">
+      <text class="error-title">分析失败</text>
       <text class="error-body">{{ error }}</text>
     </view>
 
+    <!-- 报告（MD 渲染，可折叠） -->
     <view v-if="result && status === 'completed'" class="report">
-      <view v-if="result.finalTradeDecision" class="section">
-        <text class="section-title">📊 最终决策</text>
-        <text class="section-body">{{ result.finalTradeDecision }}</text>
-      </view>
-      <view v-if="result.investmentPlan" class="section">
-        <text class="section-title">💼 投资计划</text>
-        <text class="section-body">{{ result.investmentPlan }}</text>
-      </view>
-      <view v-if="result.marketReport" class="section">
-        <text class="section-title">📈 技术面</text>
-        <text class="section-body">{{ result.marketReport }}</text>
-      </view>
-      <view v-if="result.sentimentReport" class="section">
-        <text class="section-title">💬 情感面</text>
-        <text class="section-body">{{ result.sentimentReport }}</text>
-      </view>
-      <view v-if="result.newsReport" class="section">
-        <text class="section-title">📰 新闻面</text>
-        <text class="section-body">{{ result.newsReport }}</text>
-      </view>
-      <view v-if="result.fundamentalsReport" class="section">
-        <text class="section-title">🏢 基本面</text>
-        <text class="section-body">{{ result.fundamentalsReport }}</text>
+      <view v-for="sec in sections" :key="sec.key" class="card section">
+        <view class="section-head" @click="toggle(sec.key)">
+          <text class="section-title">{{ sec.icon }} {{ sec.title }}</text>
+          <text class="chevron">{{ openMap[sec.key] ? '−' : '+' }}</text>
+        </view>
+        <view v-if="openMap[sec.key]" class="section-body">
+          <mp-html :content="htmlMap[sec.key]" :selectable="true" />
+        </view>
       </view>
     </view>
 
     <view class="actions" v-if="status === 'completed' || status === 'failed'">
-      <button class="btn" @click="goBack">返回</button>
+      <button class="btn-ghost actbtn" @click="goBack">返回</button>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { api } from '@/utils/api.js'
+import { renderMarkdown, parseSignal } from '@/utils/markdown.js'
 
 const jobId = ref('')
 const ticker = ref('')
 const status = ref('queued')
-const progress = ref(0)
 const result = ref(null)
 const error = ref('')
 const startTime = ref(Date.now())
@@ -85,14 +76,45 @@ const hintIdx = ref(0)
 const runningHint = computed(() => HINTS[hintIdx.value % HINTS.length])
 const elapsedMin = computed(() => Math.floor((Date.now() - startTime.value) / 60000))
 
-const statusText = computed(() => {
+const statusText = computed(() => ({
+  queued: '排队中',
+  running: '分析中',
+  completed: '已完成',
+  failed: '失败',
+}[status.value] || status.value))
+
+const signal = computed(() =>
+  parseSignal(result.value?.decision || result.value?.finalTradeDecision))
+
+// 每个分析维度对应的 markdown → HTML
+const htmlMap = computed(() => {
+  const r = result.value || {}
   return {
-    queued: '排队中',
-    running: '分析中',
-    completed: '已完成',
-    failed: '失败',
-  }[status.value] || status.value
+    decision: renderMarkdown(r.finalTradeDecision),
+    plan: renderMarkdown(r.investmentPlan),
+    market: renderMarkdown(r.marketReport),
+    sentiment: renderMarkdown(r.sentimentReport),
+    news: renderMarkdown(r.newsReport),
+    fundamentals: renderMarkdown(r.fundamentalsReport),
+  }
 })
+
+const SECTION_META = [
+  { key: 'decision', icon: '🎯', title: '最终决策' },
+  { key: 'plan', icon: '💼', title: '投资计划' },
+  { key: 'market', icon: '📈', title: '技术面' },
+  { key: 'sentiment', icon: '💬', title: '情感面' },
+  { key: 'news', icon: '📰', title: '新闻面' },
+  { key: 'fundamentals', icon: '🏢', title: '基本面' },
+]
+const sections = computed(() => SECTION_META.filter(s => htmlMap.value[s.key]))
+
+// 决策与计划默认展开，分析员报告默认折叠
+const openMap = ref({
+  decision: true, plan: true,
+  market: false, sentiment: false, news: false, fundamentals: false,
+})
+function toggle(key) { openMap.value[key] = !openMap.value[key] }
 
 onLoad((options) => {
   jobId.value = options?.jobId || ''
@@ -115,7 +137,6 @@ async function poll() {
   try {
     const job = await api.getJob(jobId.value)
     status.value = job.status
-    progress.value = job.progress || 0
     result.value = job.result
     error.value = job.error || ''
     if (status.value === 'completed' || status.value === 'failed') {
@@ -134,147 +155,85 @@ function goBack() {
 
 <style lang="scss" scoped>
 .container {
-  padding: 24rpx;
+  padding-bottom: 40rpx;
 }
-.header-card {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 32rpx;
+
+/* 渐变信号头 */
+.header {
+  padding: 40rpx 32rpx 36rpx;
   margin-bottom: 24rpx;
-  text-align: center;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .ticker {
+  font-size: 52rpx;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1rpx;
+}
+.sig {
+  background: rgba(255, 255, 255, 0.92);
+}
+.job-meta {
   display: block;
-  font-size: 48rpx;
-  font-weight: 700;
-  color: #1976d2;
-}
-.job-id {
-  display: block;
-  font-size: 22rpx;
-  color: #999;
-  margin-top: 8rpx;
-}
-
-.status-card {
-  border-radius: 16rpx;
-  padding: 32rpx;
-  margin-bottom: 24rpx;
-  background: #fff;
-}
-.status-card.status-queued, .status-card.status-running {
-  background: #e3f2fd;
-}
-.status-card.status-completed {
-  background: #e8f5e9;
-}
-.status-card.status-failed {
-  background: #ffebee;
-}
-.status-label {
+  margin-top: 14rpx;
   font-size: 24rpx;
-  color: #666;
-}
-.status-value {
-  display: block;
-  font-size: 36rpx;
-  font-weight: 600;
-  margin-top: 8rpx;
+  color: rgba(255, 255, 255, 0.82);
 }
 
-.progress-bar {
-  margin-top: 16rpx;
-  height: 8rpx;
-  background: #e0e0e0;
-  border-radius: 4rpx;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: #1976d2;
-  transition: width 0.3s;
-}
+/* 卡片通用边距 */
+.report, .running-card, .error-card { margin: 0 24rpx; }
+.running-card, .error-card { padding: 32rpx; margin-bottom: 24rpx; }
 
-.error-card {
-  background: #ffebee;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 24rpx;
-}
-.error-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #c62828;
-}
-.error-body {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 26rpx;
-  color: #c62828;
-  word-break: break-all;
-}
-
-.section {
-  background: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-}
-.section-title {
-  display: block;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 12rpx;
-}
-.section-body {
-  display: block;
-  font-size: 26rpx;
-  color: #555;
-  line-height: 1.6;
-  white-space: pre-wrap;
-}
-
-.running-info {
-  margin-top: 16rpx;
-}
+/* 运行中 */
 .spinner-row {
   display: flex;
   align-items: center;
   gap: 16rpx;
 }
 .spinner {
-  width: 32rpx;
-  height: 32rpx;
-  border: 4rpx solid #bbdefb;
-  border-top-color: #1976d2;
+  width: 36rpx;
+  height: 36rpx;
+  border: 5rpx solid #dbe2fb;
+  border-top-color: $primary;
   border-radius: 50%;
-  animation: spin 1s linear infinite;
+  animation: spin 0.9s linear infinite;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-.hint-text {
-  font-size: 26rpx;
-  color: #1976d2;
-}
-.elapsed {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 22rpx;
-  color: #90a4ae;
+@keyframes spin { to { transform: rotate(360deg); } }
+.hint-text { font-size: 28rpx; color: $primary; font-weight: 600; }
+.elapsed { display: block; margin-top: 16rpx; font-size: 24rpx; color: $text-3; }
+
+/* 失败 */
+.error-card { background: $sell-bg; box-shadow: none; }
+.error-title { font-size: 30rpx; font-weight: 700; color: $sell; }
+.error-body {
+  display: block; margin-top: 12rpx;
+  font-size: 26rpx; color: $sell; word-break: break-all;
 }
 
-.actions {
-  margin-top: 32rpx;
-  text-align: center;
+/* 报告分段卡片 */
+.section { margin-bottom: 20rpx; overflow: hidden; }
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
 }
-.btn {
-  background: #1976d2;
-  color: #fff;
-  padding: 20rpx 64rpx;
-  border-radius: 8rpx;
-  font-size: 28rpx;
-  border: none;
+.section-title { font-size: 30rpx; font-weight: 700; color: $text; }
+.chevron { font-size: 40rpx; color: $text-3; line-height: 1; }
+.section-body {
+  padding: 0 32rpx 28rpx;
+  border-top: 1rpx solid $line;
+  padding-top: 20rpx;
+  font-size: 27rpx;
+  color: $text-2;
+  line-height: 1.7;
 }
+
+/* 操作 */
+.actions { margin: 32rpx 24rpx 0; }
+.actbtn { width: 100%; padding: 22rpx; font-size: 30rpx; }
 </style>

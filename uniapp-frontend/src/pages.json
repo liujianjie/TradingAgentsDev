@@ -1,4 +1,10 @@
 {
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^mp-html": "mp-html/dist/uni-app/components/mp-html/mp-html.vue"
+    }
+  },
   "pages": [
     {
       "path": "pages/index/index",
@@ -28,13 +34,14 @@
   "globalStyle": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "TradingAgents",
-    "navigationBarBackgroundColor": "#1976d2",
-    "backgroundColor": "#f5f5f5"
+    "navigationBarBackgroundColor": "#5b7cfa",
+    "backgroundColor": "#f4f6fb"
   },
   "tabBar": {
-    "color": "#999",
-    "selectedColor": "#1976d2",
+    "color": "#9aa0b4",
+    "selectedColor": "#4f6ef7",
     "backgroundColor": "#ffffff",
+    "borderStyle": "white",
     "list": [
       { "pagePath": "pages/index/index", "text": "首页" },
       { "pagePath": "pages/watchlist/index", "text": "自选" },
