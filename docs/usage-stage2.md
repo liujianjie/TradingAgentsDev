@@ -7,7 +7,7 @@
 **终端 1（Python 后端）**：
 ```powershell
 cd F:\AIProject\TradingAgents
-uvicorn api.main:app --port 8000
+uvicorn api.main:app --port 28100
 ```
 
 **终端 2（C# 后端）**：
@@ -28,7 +28,7 @@ npm run dev:h5
 |------|-----|------|
 | **H5 Dashboard** | http://localhost:5173 | 浏览器访问，主入口 |
 | C# Swagger | http://localhost:8080/swagger | 后端 API 调试 |
-| Python Swagger | http://localhost:8000/docs | Python API 调试 |
+| Python Swagger | http://localhost:28100/docs | Python API 调试 |
 | Hangfire | http://localhost:8080/hangfire | 定时任务面板 |
 
 ## H5 模式：4 个 tab 页

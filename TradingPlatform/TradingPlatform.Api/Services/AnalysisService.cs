@@ -7,7 +7,7 @@ namespace TradingPlatform.Api.Services;
 
 public class PythonApiOptions
 {
-    public string BaseUrl { get; set; } = "http://localhost:8000";
+    public string BaseUrl { get; set; } = "http://localhost:28100";
     public int PollIntervalSeconds { get; set; } = 10;
     public int TimeoutMinutes { get; set; } = 60;
 }

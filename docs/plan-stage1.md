@@ -80,16 +80,16 @@ python -c "import fastapi, uvicorn; print('OK')"
 **Description**: 启动 FastAPI 服务，验证 HTTP 接口存活。已有的 `api/main.py` 已经定义了 `/health`，但还没验证能跑。
 
 **Acceptance criteria**:
-- [ ] `uvicorn api.main:app --port 8000` 能启动，无 import 错误
-- [ ] `curl http://localhost:8000/health` 返回 `{"status": "ok", ...}`
-- [ ] `curl http://localhost:8000/docs` 能看到 Swagger UI
+- [ ] `uvicorn api.main:app --port 28100` 能启动，无 import 错误
+- [ ] `curl http://localhost:28100/health` 返回 `{"status": "ok", ...}`
+- [ ] `curl http://localhost:28100/docs` 能看到 Swagger UI
 
 **Verification**:
 ```bash
 cd F:/AIProject/TradingAgents
-uvicorn api.main:app --port 8000 &
+uvicorn api.main:app --port 28100 &
 sleep 2
-curl -s http://localhost:8000/health | grep -q "ok" && echo "PASS" || echo "FAIL"
+curl -s http://localhost:28100/health | grep -q "ok" && echo "PASS" || echo "FAIL"
 ```
 
 **Dependencies**: T1
@@ -114,13 +114,13 @@ curl -s http://localhost:8000/health | grep -q "ok" && echo "PASS" || echo "FAIL
 **Verification**:
 ```bash
 # 触发分析（用 quick_think_llm 加快速度，AAPL 数据稳定）
-curl -X POST http://localhost:8000/api/v1/analyze \
+curl -X POST http://localhost:28100/api/v1/analyze \
   -H "Content-Type: application/json" \
   -d '{"ticker": "AAPL", "date": "2026-05-30"}'
 # → {"job_id": "xxx", "status": "queued"}
 
 # 轮询直到 completed（首次约 5-15 分钟）
-curl http://localhost:8000/api/v1/jobs/{job_id}
+curl http://localhost:28100/api/v1/jobs/{job_id}
 # → status=completed, result 包含 5 个报告字段
 ```
 
@@ -187,7 +187,7 @@ curl -s http://localhost:8080/swagger/index.html | grep -q "Swagger" && echo "PA
 **Verification**:
 ```bash
 # 启动 Python API
-uvicorn api.main:app --port 8000 &
+uvicorn api.main:app --port 28100 &
 # 跑 C# 集成测试
 cd TradingPlatform
 dotnet test --filter "Category=Integration&FullyQualifiedName~AnalysisService"

@@ -345,7 +345,7 @@ onMounted(() => store.fetchJobs())
 ```bash
 # Python 分析服务
 cd F:/AIProject/TradingAgents
-uvicorn api.main:app --port 8000 --reload
+uvicorn api.main:app --port 28100 --reload
 
 # C# 后端（Windows）
 cd TradingPlatform/TradingPlatform.Api

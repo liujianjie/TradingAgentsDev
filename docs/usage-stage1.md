@@ -57,7 +57,7 @@ echo $env:SERVERCHAN_SEND_KEY     # 应输出 SCT...
 **终端 1（Python）**：
 ```powershell
 cd F:\AIProject\TradingAgents
-uvicorn api.main:app --port 8000
+uvicorn api.main:app --port 28100
 ```
 
 **终端 2（C#）**：
@@ -74,8 +74,8 @@ dotnet run
 
 启动后访问：
 
-- http://localhost:8000/health  → Python API 存活
-- http://localhost:8000/docs    → Python API Swagger
+- http://localhost:28100/health  → Python API 存活
+- http://localhost:28100/docs    → Python API Swagger
 - http://localhost:8080/health  → C# API 存活
 - http://localhost:8080/swagger → C# API Swagger
 - http://localhost:8080/hangfire → Hangfire 调度面板（看定时任务列表）

@@ -71,7 +71,7 @@
 ```powershell
 # 终端 1
 cd F:\AIProject\TradingAgents
-uvicorn api.main:app --port 8000
+uvicorn api.main:app --port 28100
 
 # 终端 2
 cd F:\AIProject\TradingAgents\TradingPlatform\TradingPlatform.Api

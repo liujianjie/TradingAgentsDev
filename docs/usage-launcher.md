@@ -32,7 +32,7 @@
 
 服务在独立窗口运行，关闭主菜单不会杀子进程。可以单独看每个窗口的日志：
 
-- `TradingAgents - Python API :8000` - LLM 调用详情
+- `TradingAgents - Python API :28100` - LLM 调用详情
 - `TradingAgents - C# API :8080` - 推送、调度日志
 - `TradingAgents - UniApp H5 :5173` - 前端编译错误
 
@@ -40,7 +40,7 @@
 
 | 服务 | 端口 | 验证 URL |
 |------|------|----------|
-| Python FastAPI | 8000 | http://localhost:8000/health |
+| Python FastAPI | 28100 | http://localhost:28100/health |
 | C# ASP.NET | 8080 | http://localhost:8080/health |
 | UniApp H5 | 5173 | http://localhost:5173 |
 
@@ -83,7 +83,7 @@ if (($bytes | Where-Object { $_ -gt 0x7F }).Count -gt 0) {
 ```powershell
 # 终端 1
 cd F:\AIProject\TradingAgents
-uvicorn api.main:app --port 8000
+uvicorn api.main:app --port 28100
 
 # 终端 2
 cd F:\AIProject\TradingAgents\TradingPlatform\TradingPlatform.Api
