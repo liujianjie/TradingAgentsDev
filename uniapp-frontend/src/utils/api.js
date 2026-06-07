@@ -51,4 +51,10 @@ export const api = {
     const qs = params ? '?' + new URLSearchParams(params).toString() : ''
     return request({ url: '/api/history' + qs })
   },
+
+  // 设置页：推送时间 + LLM 默认模型
+  getSettings: () => request({ url: '/api/settings' }),
+  updateSettings: (data) =>
+    request({ url: '/api/settings', method: 'POST', data }),
+  getProviders: () => request({ url: '/api/settings/providers' }),
 }

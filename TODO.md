@@ -9,9 +9,8 @@
 ### 数据源按市场路由（详见 `PLAN.md`「数据源策略」）
 D1 核心切片均已完成：行情(下方已完成区) + **D1-2 技术指标 / D1-3 基本面 / D1-4 个股新闻**（见各项）。
 A股财务/行情/指标**走 akshare 新浪源**，港股财务走东财 em（非 push2his），**均不用东财行情接口**（反爬，见搁置项）。
-D1 全系列（行情/指标/基本面/新闻/ticker加固）已收尾。D2 重塑为「智能 fallback + 透明展示」：
-**D2-a 后端空数据/异常自动转源 ✅、D2-b 透明展示用了哪个源 ✅**。D2 完成。
-下一步可选 **settings 设置页**（推送时间 + LLM 模型选择，纯阶段二遗留，与数据源无关）。
+D1 全系列 ✅ + D2（智能 fallback + 透明溯源）✅ + **settings 设置页 ✅**。阶段二主线全部收尾。
+剩余：低优先 baostock fallback（不急）、可选 SignalR 实时进度。阶段三 IBKR 用户决定延后。
 
 - [x] **D1-2 · akshare 技术指标**（get_indicators）✅ 2026-06-07
   - 实现: 把 OHLCV 来源做成**可插拔**——`load_ohlcv` 加 `fetcher`/`source_tag`（默认 yfinance 不变、
@@ -76,8 +75,17 @@ D1 全系列（行情/指标/基本面/新闻/ticker加固）已收尾。D2 重�
     news 已由新闻分析员主线程记录，冗余无碍。
   - Files: `interface.py`、`sentiment_analyst.py`、`api/analyzer.py`、`AnalysisDtos.cs`、`ReportFormatter.cs`、`uniapp .../analysis/index.vue`
 
-- [ ] **settings 设置页**（阶段二遗留）：推送时间 + LLM 模型选择
-  - 注: 数据源**不再放设置页**（D2 已定：纯智能 fallback、不做手动选源；用了哪个源由报告"数据源溯源"段透明展示）
+- [x] **settings 设置页**（阶段二遗留）：推送时间 + LLM 模型选择 ✅ 2026-06-07
+  - 实现（全栈）: C# `UserSettings` 实体(单行 Id=1，不存密钥) + DbSet + Program.cs 建表/种子(LLM 默认取
+    apikeys active_provider) + `SettingsController`(GET/POST/`GET providers`) + Hangfire 读 DB 设置(HH:MM→cron
+    + 启停 + 保存即热更新) + Orchestrator 把持久化 LLM 默认应用到**所有分析(含定时)**(修复定时推送默认用
+    DEFAULT_CONFIG/openai)。UniApp `pages/settings/index.vue`(盘前/盘后开关+时间选择器、provider 下拉只列已配 key、
+    深/快模型) + api.js + 首页"⚙️设置"入口。
+  - Verify: C# `dotnet build` 0 错误 + **运行时冒烟**(建表、种子 llm=xai、GET/POST/providers 往返、POST 热更新
+    盘前 09:00/盘后关 已确认)；UniApp `build:h5` DONE；providers 只返回 xai(唯一配 key)；测试后已恢复 DB 默认。
+  - 决策: 数据源**不进设置页**（D2 已定纯智能 fallback）；密钥(SendKey/各 LLM key)**不进设置页**，留 apikeys.local.json(密钥铁律)。
+  - Files: `Entities.cs`、`AppDbContext.cs`、`AnalysisDtos.cs`、`SettingsController.cs`、`ScheduledAnalysisJob.cs`、
+    `AnalysisOrchestrator.cs`、`Program.cs`、`pages.json`、`api.js`、`pages/settings/index.vue`、`pages/index/index.vue`
 
 - [低优先/可选] **baostock 第二层 fallback**
   - Acceptance: A股链 `akshare(新浪)→baostock→yfinance`；baostock 是独立免费 API（非爬虫）的真冗余

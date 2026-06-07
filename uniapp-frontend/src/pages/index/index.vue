@@ -58,6 +58,10 @@
           <text class="quick-icon">🕑</text>
           <text class="quick-label">查看历史</text>
         </view>
+        <view class="card quick-card" @click="goSettings">
+          <text class="quick-icon">⚙️</text>
+          <text class="quick-label">设置</text>
+        </view>
       </view>
 
       <view class="footer">
@@ -136,6 +140,7 @@ async function loadWatchlist() {
 
 function goWatchlist() { uni.switchTab({ url: '/pages/watchlist/index' }) }
 function goHistory() { uni.switchTab({ url: '/pages/history/index' }) }
+function goSettings() { uni.navigateTo({ url: '/pages/settings/index' }) }
 
 onMounted(() => { checkHealth(); loadWatchlist() })
 </script>

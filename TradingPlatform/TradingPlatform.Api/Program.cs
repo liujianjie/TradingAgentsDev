@@ -87,7 +87,43 @@ using (var scope = app.Services.CreateScope())
             app.Logger.LogInformation("DB migration: added SortOrder column to Watchlist");
         }
     }
+    // UserSettings 表：EnsureCreated 不会给存量库新建表，故手动建（幂等）。
+    using (var createSettings = conn.CreateCommand())
+    {
+        createSettings.CommandText = @"CREATE TABLE IF NOT EXISTS UserSettings (
+            Id INTEGER NOT NULL PRIMARY KEY,
+            PreMarketEnabled INTEGER NOT NULL,
+            PreMarketTime TEXT NOT NULL,
+            PostMarketEnabled INTEGER NOT NULL,
+            PostMarketTime TEXT NOT NULL,
+            LlmProvider TEXT NULL,
+            DeepThinkLlm TEXT NULL,
+            QuickThinkLlm TEXT NULL,
+            UpdatedAt TEXT NOT NULL)";
+        createSettings.ExecuteNonQuery();
+    }
     conn.Close();
+
+    // 种子单行设置：推送时间用实体默认（08:30/15:10），LLM 默认取 apikeys 的 active_provider
+    // 及其模型 → 定时推送开箱即用用户实际配的 provider（而非 DEFAULT_CONFIG 的 openai）。
+    if (!db.UserSettings.Any())
+    {
+        var ak = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ApiKeysConfig>>().Value;
+        var prov = ak.ActiveProvider;
+        ApiKeysConfig.ProviderConfig? pc = null;
+        if (!string.IsNullOrWhiteSpace(prov)) ak.Providers?.TryGetValue(prov, out pc);
+        var llmOk = pc != null && !string.IsNullOrWhiteSpace(pc.ApiKey)
+                    && !pc.ApiKey.Contains("REPLACE-ME", StringComparison.OrdinalIgnoreCase);
+        db.UserSettings.Add(new TradingPlatform.Api.Models.UserSettings
+        {
+            Id = 1,
+            LlmProvider = llmOk ? prov : null,
+            DeepThinkLlm = llmOk ? pc!.DeepThinkModel : null,
+            QuickThinkLlm = llmOk ? pc!.QuickThinkModel : null,
+        });
+        db.SaveChanges();
+        app.Logger.LogInformation("已种子 UserSettings 默认行 (llm={Prov})", llmOk ? prov : "(未配,用 DEFAULT_CONFIG)");
+    }
 
     var configWatchlist = app.Configuration.GetSection("Watchlist").Get<List<TradingPlatform.Api.Services.WatchlistItem>>() ?? new();
     if (configWatchlist.Count > 0 && !db.Watchlist.Any())

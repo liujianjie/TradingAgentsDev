@@ -44,6 +44,16 @@ public static class HangfireScheduleConfigurer
         return string.Join(' ', parts);
     }
 
+    // "08:30" → "30 8 * * MON-FRI"（工作日定时）。非法输入兜底到默认盘前时间。
+    private static string TimeToCron(string? hhmm)
+    {
+        var parts = (hhmm ?? "").Split(':');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var h) && int.TryParse(parts[1], out var m)
+            && h is >= 0 and <= 23 && m is >= 0 and <= 59)
+            return $"{m} {h} * * MON-FRI";
+        return "30 8 * * MON-FRI";
+    }
+
     public static async Task RegisterRecurringJobsAsync(
         IServiceProvider services,
         IConfiguration configuration,
@@ -54,7 +64,14 @@ public static class HangfireScheduleConfigurer
         var recurring = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
 
         var watchlist = await db.Watchlist.OrderBy(w => w.SortOrder).ThenBy(w => w.Ticker).ToListAsync();
-        var schedule = configuration.GetSection("Schedule").Get<ScheduleOptions>() ?? new();
+
+        // 推送时间来源：DB UserSettings 优先（设置页可改），无记录则回退 appsettings Schedule 默认。
+        var settings = await db.UserSettings.FindAsync(1);
+        var fallback = configuration.GetSection("Schedule").Get<ScheduleOptions>() ?? new();
+        var preEnabled = settings?.PreMarketEnabled ?? true;
+        var postEnabled = settings?.PostMarketEnabled ?? true;
+        var preBaseCron = settings != null ? TimeToCron(settings.PreMarketTime) : fallback.PreMarketCron;
+        var postBaseCron = settings != null ? TimeToCron(settings.PostMarketTime) : fallback.PostMarketCron;
 
         if (watchlist.Count == 0)
         {
@@ -70,22 +87,25 @@ public static class HangfireScheduleConfigurer
 
             // Priority items (SortOrder < 10) fire 5 min before the base schedule
             var minutesEarlier = item.SortOrder < 10 ? 5 : 0;
-            var preCron = ShiftCronEarlier(schedule.PreMarketCron, minutesEarlier);
-            var postCron = ShiftCronEarlier(schedule.PostMarketCron, minutesEarlier);
+            var opts = new RecurringJobOptions { TimeZone = TimeZoneInfo.Local };
 
-            recurring.AddOrUpdate<IScheduledAnalysisJob>(
-                preId, j => j.RunAsync(ticker), preCron, new RecurringJobOptions
-                {
-                    TimeZone = TimeZoneInfo.Local,
-                });
-            recurring.AddOrUpdate<IScheduledAnalysisJob>(
-                postId, j => j.RunAsync(ticker), postCron, new RecurringJobOptions
-                {
-                    TimeZone = TimeZoneInfo.Local,
-                });
+            if (preEnabled)
+                recurring.AddOrUpdate<IScheduledAnalysisJob>(
+                    preId, j => j.RunAsync(ticker), ShiftCronEarlier(preBaseCron, minutesEarlier), opts);
+            else
+                recurring.RemoveIfExists(preId);  // 设置页关掉盘前 → 移除已注册任务
+
+            if (postEnabled)
+                recurring.AddOrUpdate<IScheduledAnalysisJob>(
+                    postId, j => j.RunAsync(ticker), ShiftCronEarlier(postBaseCron, minutesEarlier), opts);
+            else
+                recurring.RemoveIfExists(postId);
+
             logger.LogInformation(
-                "注册定时任务 {Ticker} (priority={P}): 盘前 [{PreCron}], 盘后 [{PostCron}]",
-                ticker, item.SortOrder, preCron, postCron);
+                "注册定时任务 {Ticker} (priority={P}): 盘前 [{Pre}], 盘后 [{Post}]",
+                ticker, item.SortOrder,
+                preEnabled ? ShiftCronEarlier(preBaseCron, minutesEarlier) : "关",
+                postEnabled ? ShiftCronEarlier(postBaseCron, minutesEarlier) : "关");
         }
     }
 }

@@ -17,6 +17,35 @@ public class WatchlistEntity
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// 全局用户设置（单行，Id 固定为 1；本平台无多用户概念）。
+/// 推送时间用 HH:MM + 工作日（UI 友好），注册 Hangfire 时转 cron。
+/// LLM 默认 provider/model 应用到定时分析（否则定时任务用 DEFAULT_CONFIG）。
+/// 注意：不存任何密钥（Server酱 SendKey/各 LLM api_key 留在 apikeys.local.json，按密钥铁律）。
+/// </summary>
+public class UserSettings
+{
+    [Key]
+    public int Id { get; set; } = 1;
+
+    public bool PreMarketEnabled { get; set; } = true;
+    [MaxLength(5)]
+    public string PreMarketTime { get; set; } = "08:30";   // HH:MM，工作日
+
+    public bool PostMarketEnabled { get; set; } = true;
+    [MaxLength(5)]
+    public string PostMarketTime { get; set; } = "15:10";
+
+    [MaxLength(32)]
+    public string? LlmProvider { get; set; }
+    [MaxLength(64)]
+    public string? DeepThinkLlm { get; set; }
+    [MaxLength(64)]
+    public string? QuickThinkLlm { get; set; }
+
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
 public class AnalysisRecord
 {
     [Key]

@@ -59,8 +59,19 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
         {
             using var scope = _scopeFactory.CreateScope();
             var analysis = scope.ServiceProvider.GetRequiredService<IAnalysisService>();
+            // 应用用户设置的默认 LLM（含定时任务）；为空则 Python 用 DEFAULT_CONFIG。
+            // 修复"定时推送默认用 DEFAULT_CONFIG(openai) 而非用户实际配的 provider"。
+            var settingsDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var settings = await settingsDb.UserSettings.FindAsync(new object[] { 1 }, ct);
             pythonJobId = await analysis.TriggerAsync(
-                new AnalyzeRequest { Ticker = ticker, Date = date }, ct);
+                new AnalyzeRequest
+                {
+                    Ticker = ticker,
+                    Date = date,
+                    LlmProvider = settings?.LlmProvider,
+                    DeepThinkLlm = settings?.DeepThinkLlm,
+                    QuickThinkLlm = settings?.QuickThinkLlm,
+                }, ct);
 
             // 把 Python 的 jobId 关联到 record（jobId 字段更新为 Python 的 ID）
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

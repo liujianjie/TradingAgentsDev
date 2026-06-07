@@ -18,8 +18,8 @@
 - ✅ 分析报告在线 Markdown 渲染（`marked` + `mp-html`，跨 H5/小程序）
 - ✅ 报告保存本地 MD（`reports/`）+ 前端显示保存路径
 - ✅ 多 LLM 支持（新增 xAI/Grok）；数据获取健壮性修复（TLS/超时/港股代码规范化）
-- 🔄 数据源按市场路由（akshare 新浪源）— 行情切片完成，后续切片见 `TODO.md`
-- ⬜ settings 设置页（推送时间 + LLM 模型选择 + 数据源选择 D2）—— 阶段二遗留
+- ✅ 数据源按市场路由（akshare 新浪源）— D1 全系列(行情/指标/基本面/新闻/ticker加固) + D2(智能 fallback+透明溯源) 完成
+- ✅ settings 设置页（推送时间 + LLM 模型选择）—— 全栈完成；数据源不进设置页(D2 纯智能 fallback)、密钥留 apikeys
 - ⬜ 实时进度从 5 秒轮询升级 SignalR（可选，非必须）
 
 ## 数据源策略（关键决策）

@@ -42,3 +42,23 @@ public class AnalyzeRequest
     public string? DeepThinkLlm { get; set; }
     public string? QuickThinkLlm { get; set; }
 }
+
+// 设置页读写 DTO（推送时间 + LLM 默认）。不含任何密钥。
+public class UserSettingsDto
+{
+    public bool PreMarketEnabled { get; set; } = true;
+    public string PreMarketTime { get; set; } = "08:30";
+    public bool PostMarketEnabled { get; set; } = true;
+    public string PostMarketTime { get; set; } = "15:10";
+    public string? LlmProvider { get; set; }
+    public string? DeepThinkLlm { get; set; }
+    public string? QuickThinkLlm { get; set; }
+}
+
+// 设置页 LLM 下拉用：只列出已配 key 的 provider 及其默认深/快模型（来自 apikeys.local.json）。
+public class ProviderInfoDto
+{
+    public string Provider { get; set; } = string.Empty;
+    public string? DeepThinkModel { get; set; }
+    public string? QuickThinkModel { get; set; }
+}
