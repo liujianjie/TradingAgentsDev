@@ -19,11 +19,10 @@ D1 行情切片已完成（见下方已完成区）；继续后续 vendor 切片
   - Verify: `600519.SS` 基本面有数据；`07709.HK` 返回"无财报"清晰提示而非异常
   - Files: `akshare_utils.py`、`interface.py`
 
-- [ ] **D1-4 · akshare 个股新闻**（get_news）
-  - Acceptance: A股/港股 `get_news` 走 akshare 中文新闻（`stock_news_em`，不反爬源）；`get_global_news` 仍走 yfinance/AV
-  - Verify: `600519.SS` 有中文新闻；`get_global_news` 不命中 akshare
-  - Files: `akshare_utils.py`、`interface.py`
-  - 参考: TradingAgents-CN 的 `stock_news_em` + 情感分类/重要性评估逻辑
+- [x] **D1-4 · akshare 个股新闻**（get_news）✅ 2026-06-07
+  - 实现: `get_akshare_news`（stock_news_em，防 look-ahead 按发布时间 <= end_date 过滤）+ interface 注册
+  - 实测: 07709.HK 取到 10 条相关中文新闻（"南方两倍做多海力士涨14.98%"），route 命中 akshare
+  - 效果: 新闻面有港股真实新闻；情感面 news_block 不再空（StockTwits/Reddit 港股仍无 = 美股社区无解）
 
 - [ ] **D1-5 · ticker 规范化下沉到 yfinance vendor**（加固，当前只在 analyzer 入口）
   - Acceptance: 绕过 analyzer 入口、直接把 `07709.HK` 传给 yfinance vendor 也能取数（不再 404）

@@ -164,3 +164,53 @@ def get_akshare_stock_data(symbol: str, start_date: str, end_date: str) -> str:
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
     header += "# Source: akshare(sina)\n\n"
     return header + csv_string
+
+
+def get_akshare_news(symbol: str, start_date: str, end_date: str) -> str:
+    """A股/港股个股中文新闻（akshare 东财 stock_news_em）。
+
+    填补 yfinance 对 A股/港股个股新闻覆盖几乎为零的缺口——StockTwits/Reddit 是美股社区、
+    Yahoo 对中港股个股新闻极少，导致情感面/新闻面对 A股/港股长期"信息真空"。stock_news_em
+    对港股（如 07709）与 A股都有中文新闻，且走的东财子域名不同于反爬的 push2his。
+    非 CN 市场抛 AkshareUnavailableError → 路由 fallback 到 yfinance。
+
+    stock_news_em 返回"最近"新闻、无日期入参，故按"发布时间"过滤到 <= end_date 当天
+    （防回测 look-ahead），取窗口内最近若干条。
+    """
+    import akshare as ak
+
+    market = market_of(symbol)
+    if market not in ("cn_a", "hk"):
+        raise AkshareUnavailableError(f"akshare 个股新闻不支持市场 {market}（{symbol}）")
+
+    ak_symbol = to_akshare_symbol(symbol)
+    df = _akshare_retry(lambda: ak.stock_news_em(symbol=ak_symbol))
+    if df is None or df.empty:
+        raise AkshareUnavailableError(f"akshare 无个股新闻: {symbol}")
+
+    # 防 look-ahead：只保留发布时间 <= end_date 当天的新闻，并按时间降序
+    if "发布时间" in df.columns:
+        df = df.copy()
+        df["_dt"] = pd.to_datetime(df["发布时间"], errors="coerce")
+        cutoff = pd.to_datetime(end_date) + pd.Timedelta(days=1)
+        df = df[df["_dt"].isna() | (df["_dt"] < cutoff)]
+        df = df.sort_values("_dt", ascending=False, na_position="last")
+    if df.empty:
+        raise AkshareUnavailableError(f"akshare 个股新闻均晚于 {end_date}: {symbol}")
+
+    lines = [f"## {symbol.upper()} 个股新闻（akshare/东财，截至 {end_date}）:\n"]
+    for _, row in df.head(15).iterrows():
+        title = str(row.get("新闻标题", "")).strip()
+        content = str(row.get("新闻内容", "")).strip().replace("\n", " ")
+        ptime = str(row.get("发布时间", "")).strip()
+        src = str(row.get("文章来源", "")).strip()
+        link = str(row.get("新闻链接", "")).strip()
+        if not title:
+            continue
+        lines.append(f"### {title}（{src} · {ptime}）")
+        if content:
+            lines.append(content[:300])
+        if link:
+            lines.append(f"链接: {link}")
+        lines.append("")
+    return "\n".join(lines)

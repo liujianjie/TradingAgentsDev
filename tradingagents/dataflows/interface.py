@@ -25,6 +25,7 @@ from .alpha_vantage import (
 from .alpha_vantage_common import AlphaVantageRateLimitError
 from .akshare_utils import (
     get_akshare_stock_data,
+    get_akshare_news,
     AkshareUnavailableError,
     market_of,
 )
@@ -103,6 +104,7 @@ VENDOR_METHODS = {
     },
     # news_data
     "get_news": {
+        "akshare": get_akshare_news,
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
     },
