@@ -26,14 +26,14 @@ npm run dev:h5
 
 | 入口 | URL | 用途 |
 |------|-----|------|
-| **H5 Dashboard** | http://localhost:5173 | 浏览器访问，主入口 |
-| C# Swagger | http://localhost:8080/swagger | 后端 API 调试 |
+| **H5 Dashboard** | http://localhost:28300 | 浏览器访问，主入口 |
+| C# Swagger | http://localhost:28200/swagger | 后端 API 调试 |
 | Python Swagger | http://localhost:28100/docs | Python API 调试 |
-| Hangfire | http://localhost:8080/hangfire | 定时任务面板 |
+| Hangfire | http://localhost:28200/hangfire | 定时任务面板 |
 
 ## H5 模式：4 个 tab 页
 
-打开 http://localhost:5173 后能看到：
+打开 http://localhost:28300 后能看到：
 
 - **首页**：后端在线状态、快捷入口
 - **自选**：自选股 CRUD，每行有「分析」「删除」按钮
@@ -58,7 +58,7 @@ npm run build:mp-weixin
 3. AppID 填测试号或自己的（可以暂用「测试号」模式）
 4. 点「编译」预览
 
-注意：小程序模式下 baseURL 是 `http://localhost:8080`，确保 C# 服务在跑。
+注意：小程序模式下 baseURL 是 `http://localhost:28200`，确保 C# 服务在跑。
 真机调试时小程序需要 HTTPS（这是阶段三/上线时再处理）。
 
 ## 常用操作

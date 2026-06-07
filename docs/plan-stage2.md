@@ -58,14 +58,14 @@ T16 (前端：发布微信小程序版本)
 **Acceptance**:
 - [ ] `uniapp-frontend/` 项目可用 vite 创建
 - [ ] `npm run dev:h5` 启动开发服务器
-- [ ] 浏览器访问 `http://localhost:5173` 看到 hello world 页面
-- [ ] 配置 axios 或 uni.request 封装，能 `GET http://localhost:8080/health` 显示后端状态
+- [ ] 浏览器访问 `http://localhost:28300` 看到 hello world 页面
+- [ ] 配置 axios 或 uni.request 封装，能 `GET http://localhost:28200/health` 显示后端状态
 
 **Verification**:
 ```bash
 cd uniapp-frontend
 npm run dev:h5 &
-curl -s http://localhost:5173 | grep -q "uni-app"
+curl -s http://localhost:28300 | grep -q "uni-app"
 ```
 
 **Files**:
@@ -92,8 +92,8 @@ curl -s http://localhost:5173 | grep -q "uni-app"
 
 **Verification**:
 ```bash
-curl -X POST http://localhost:8080/api/watchlist -d '{"ticker":"TSLA","name":"特斯拉"}'
-curl http://localhost:8080/api/watchlist  # 应包含 TSLA
+curl -X POST http://localhost:28200/api/watchlist -d '{"ticker":"TSLA","name":"特斯拉"}'
+curl http://localhost:28200/api/watchlist  # 应包含 TSLA
 ```
 
 **Files**:

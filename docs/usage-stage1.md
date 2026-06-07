@@ -5,7 +5,7 @@
 阶段一已完成。日常使用流程：
 
 1. 配置好 LLM API Key 和 Server酱 SendKey
-2. 启动两个服务：Python FastAPI（8000）+ C# ASP.NET Core（8080）
+2. 启动两个服务：Python FastAPI（8000）+ C# ASP.NET Core（28200）
 3. 把电脑保持开机
 4. 工作日 08:30 / 15:10 自动触发分析，微信收到推送
 
@@ -76,14 +76,14 @@ dotnet run
 
 - http://localhost:28100/health  → Python API 存活
 - http://localhost:28100/docs    → Python API Swagger
-- http://localhost:8080/health  → C# API 存活
-- http://localhost:8080/swagger → C# API Swagger
-- http://localhost:8080/hangfire → Hangfire 调度面板（看定时任务列表）
+- http://localhost:28200/health  → C# API 存活
+- http://localhost:28200/swagger → C# API Swagger
+- http://localhost:28200/hangfire → Hangfire 调度面板（看定时任务列表）
 
 ## 手动触发一次分析（不等定时）
 
 ```bash
-curl -X POST http://localhost:8080/api/analysis/trigger \
+curl -X POST http://localhost:28200/api/analysis/trigger \
   -H "Content-Type: application/json" \
   -d "{\"ticker\":\"AAPL\"}"
 ```
@@ -93,7 +93,7 @@ curl -X POST http://localhost:8080/api/analysis/trigger \
 查询当前 Job 状态：
 
 ```bash
-curl http://localhost:8080/api/analysis/jobs/{jobId}
+curl http://localhost:28200/api/analysis/jobs/{jobId}
 ```
 
 ## 临时改时间快速验证
@@ -120,7 +120,7 @@ curl http://localhost:8080/api/analysis/jobs/{jobId}
 
 ## API 端点速查
 
-C# 端（端口 8080）：
+C# 端（端口 28200）：
 
 | 端点 | 用途 |
 |------|------|

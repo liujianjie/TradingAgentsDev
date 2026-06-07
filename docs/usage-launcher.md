@@ -33,16 +33,16 @@
 服务在独立窗口运行，关闭主菜单不会杀子进程。可以单独看每个窗口的日志：
 
 - `TradingAgents - Python API :28100` - LLM 调用详情
-- `TradingAgents - C# API :8080` - 推送、调度日志
-- `TradingAgents - UniApp H5 :5173` - 前端编译错误
+- `TradingAgents - C# API :28200` - 推送、调度日志
+- `TradingAgents - UniApp H5 :28300` - 前端编译错误
 
 ## 端口约定
 
 | 服务 | 端口 | 验证 URL |
 |------|------|----------|
 | Python FastAPI | 28100 | http://localhost:28100/health |
-| C# ASP.NET | 8080 | http://localhost:8080/health |
-| UniApp H5 | 5173 | http://localhost:5173 |
+| C# ASP.NET | 28200 | http://localhost:28200/health |
+| UniApp H5 | 28300 | http://localhost:28300 |
 
 如果端口冲突，启动器会提示「已运行，跳过」。
 

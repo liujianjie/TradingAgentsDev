@@ -149,7 +149,7 @@ curl http://localhost:28100/api/v1/jobs/{job_id}
 
 **Acceptance criteria**:
 - [ ] `TradingPlatform/TradingPlatform.Api/` 目录下有完整 .NET 8 webapi 项目
-- [ ] `dotnet run` 启动到 http://localhost:8080
+- [ ] `dotnet run` 启动到 http://localhost:28200
 - [ ] 访问 `/swagger` 能看到 Swagger UI
 - [ ] `appsettings.json` 配置了 PythonApiBaseUrl 和 ServerChan SendKey 占位符
 - [ ] `appsettings.local.json` 在 `.gitignore` 中，用于实际密钥
@@ -157,9 +157,9 @@ curl http://localhost:28100/api/v1/jobs/{job_id}
 **Verification**:
 ```bash
 cd F:/AIProject/TradingAgents/TradingPlatform/TradingPlatform.Api
-dotnet run --urls http://localhost:8080 &
+dotnet run --urls http://localhost:28200 &
 sleep 3
-curl -s http://localhost:8080/swagger/index.html | grep -q "Swagger" && echo "PASS"
+curl -s http://localhost:28200/swagger/index.html | grep -q "Swagger" && echo "PASS"
 ```
 
 **Dependencies**: None（可与 T1-T3 并行）
@@ -247,7 +247,7 @@ dotnet test --filter "Category=ManualPush"
 **Verification**:
 ```bash
 # 启动 Python + C#
-curl -X POST http://localhost:8080/api/analysis/trigger \
+curl -X POST http://localhost:28200/api/analysis/trigger \
   -H "Content-Type: application/json" \
   -d '{"ticker": "AAPL"}'
 # 等 5-15 分钟，微信收到完整报告
@@ -269,7 +269,7 @@ curl -X POST http://localhost:8080/api/analysis/trigger \
 **Description**: 引入 Hangfire，配置每个工作日 08:30 和 15:10 自动触发对自选股列表的分析。
 
 **Acceptance criteria**:
-- [ ] Hangfire dashboard 可访问 http://localhost:8080/hangfire
+- [ ] Hangfire dashboard 可访问 http://localhost:28200/hangfire
 - [ ] 自选股列表暂时硬编码在 appsettings.json（一个 JSON 数组）
 - [ ] 定时任务在指定时间触发对每只股票调用 `AnalysisService.TriggerAndPushAsync`
 - [ ] 验证：把 cron 临时改为 1 分钟后，等待自动触发，微信收到消息

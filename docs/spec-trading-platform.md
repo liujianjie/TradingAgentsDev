@@ -28,7 +28,7 @@
 └──────────────────────────┬──────────────────────────────┘
                            │ HTTP REST / WebSocket
 ┌──────────────────────────▼──────────────────────────────┐
-│              C# ASP.NET Core 后端 (8080)                 │
+│              C# ASP.NET Core 后端 (28200)                 │
 │  • 任务调度 (Hangfire)      • 推送通知 (Server酱)         │
 │  • 结果持久化 (SQLite)      • WebSocket 实时流            │
 │  • 用户股票列表管理          • IBKR 交易接口 (阶段三)      │
@@ -213,7 +213,7 @@ DELETE /api/stocklist/{ticker}      ← 删除自选股
 
 ### 成功标准
 
-- [ ] `dotnet run` 启动 C# 服务，Hangfire 控制台可见 http://localhost:8080/hangfire
+- [ ] `dotnet run` 启动 C# 服务，Hangfire 控制台可见 http://localhost:28200/hangfire
 - [ ] 手动 POST `/api/analysis/trigger` 后，5-30 分钟内微信收到格式化消息
 - [ ] 工作日 09:00 自动触发，15:30 自动触发
 - [ ] 任务失败时推送失败通知（含错误摘要）
@@ -248,7 +248,7 @@ DELETE /api/stocklist/{ticker}      ← 删除自选股
 
 ### 成功标准
 
-- [ ] HBuilderX 一键发布为 H5，浏览器访问 `http://localhost:8080/h5`
+- [ ] HBuilderX 一键发布为 H5，浏览器访问 `http://localhost:28200/h5`
 - [ ] 发布为微信小程序，手机可扫码预览
 - [ ] 分析进度实时更新（每个 Agent 完成后 < 2 秒更新到 UI）
 - [ ] 历史报告支持按股票/日期筛选

@@ -27,8 +27,8 @@ function Show-Health {
     Write-Title '服务状态检查'
     foreach ($svc in @(
         @{Name='Python FastAPI'; Port=28100; Url='http://localhost:28100/health'},
-        @{Name='C# ASP.NET'; Port=8080; Url='http://localhost:8080/health'},
-        @{Name='UniApp H5'; Port=5173; Url='http://localhost:5173'}
+        @{Name='C# ASP.NET'; Port=28200; Url='http://localhost:28200/health'},
+        @{Name='UniApp H5'; Port=28300; Url='http://localhost:28300'}
     )) {
         if (Test-Port $svc.Port) {
             try {
@@ -74,37 +74,37 @@ function Start-Python {
 }
 
 function Start-Dotnet {
-    if (Test-Port 8080) { Write-Host '  C# 已在 :8080 运行，跳过' -ForegroundColor Yellow; return }
+    if (Test-Port 28200) { Write-Host '  C# 已在 :28200 运行，跳过' -ForegroundColor Yellow; return }
     if (-not (Test-CommandExists 'dotnet')) {
         Write-Host '  ❌ 未检测到 dotnet SDK' -ForegroundColor Red
         return
     }
-    Write-Host '  启动 C# ASP.NET on :8080 ...' -ForegroundColor Green
+    Write-Host '  启动 C# ASP.NET on :28200 ...' -ForegroundColor Green
     Start-Process -FilePath 'powershell.exe' -ArgumentList @(
         '-NoExit', '-NoProfile',
         '-Command',
-        "Set-Location '$DOTNET_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - C# API :8080'; dotnet run --launch-profile http"
+        "Set-Location '$DOTNET_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - C# API :28200'; dotnet run --launch-profile http"
     ) | Out-Null
 }
 
 function Start-UniApp {
-    if (Test-Port 5173) { Write-Host '  UniApp 已在 :5173 运行，跳过' -ForegroundColor Yellow; return }
+    if (Test-Port 28300) { Write-Host '  UniApp 已在 :28300 运行，跳过' -ForegroundColor Yellow; return }
     if (-not (Test-CommandExists 'npm')) {
         Write-Host '  ❌ 未检测到 npm，请安装 Node.js 18+' -ForegroundColor Red
         return
     }
-    Write-Host '  启动 UniApp H5 on :5173 ...' -ForegroundColor Green
+    Write-Host '  启动 UniApp H5 on :28300 ...' -ForegroundColor Green
     Start-Process -FilePath 'powershell.exe' -ArgumentList @(
         '-NoExit', '-NoProfile',
         '-Command',
-        "Set-Location '$UNIAPP_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - UniApp H5 :5173'; npm run dev:h5"
+        "Set-Location '$UNIAPP_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - UniApp H5 :28300'; npm run dev:h5"
     ) | Out-Null
 }
 
 function Stop-AllServices {
     Write-Title '停止所有服务'
     # 杀对应端口的进程
-    foreach ($port in @(28100, 8080, 5173)) {
+    foreach ($port in @(28100, 28200, 28300)) {
         $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
         if ($conns) {
             foreach ($c in $conns) {
@@ -127,7 +127,7 @@ function Show-Menu {
     Write-Host '  2. 仅启动后端（Python + C#）' -ForegroundColor White
     Write-Host '  3. 检查服务状态' -ForegroundColor White
     Write-Host '  4. 停止所有服务' -ForegroundColor White
-    Write-Host '  5. 打开浏览器到 Dashboard (http://localhost:5173)' -ForegroundColor White
+    Write-Host '  5. 打开浏览器到 Dashboard (http://localhost:28300)' -ForegroundColor White
     Write-Host '  0. 退出' -ForegroundColor DarkGray
     Write-Host ''
 }
@@ -156,10 +156,10 @@ while ($true) {
         '3' { Show-Health }
         '4' { Stop-AllServices }
         '5' {
-            if (-not (Test-Port 5173)) {
+            if (-not (Test-Port 28300)) {
                 Write-Host '  UniApp 未运行，请先用菜单 1 启动' -ForegroundColor Yellow
             } else {
-                Start-Process 'http://localhost:5173'
+                Start-Process 'http://localhost:28300'
             }
         }
         '0' { Write-Host '再见'; exit 0 }

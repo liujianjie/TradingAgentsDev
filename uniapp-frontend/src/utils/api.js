@@ -1,6 +1,6 @@
 /**
  * 统一封装与 C# 后端的 HTTP 通信。
- * H5 dev 模式下走 vite 代理 (/api -> localhost:8080)，避免跨域问题。
+ * H5 dev 模式下走 vite 代理 (/api -> localhost:28200)，避免跨域问题。
  * 小程序模式必须使用绝对地址，因此通过 BASE_URL 切换。
  */
 
@@ -9,7 +9,7 @@ const BASE_URL =
   '' // H5 走 vite 代理，相对路径
   // #endif
   // #ifndef H5
-  + 'http://localhost:8080'
+  + 'http://localhost:28200'
   // #endif
 
 function request({ url, method = 'GET', data, header }) {
