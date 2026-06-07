@@ -25,7 +25,12 @@ from .alpha_vantage import (
 from .alpha_vantage_common import AlphaVantageRateLimitError
 from .akshare_utils import (
     get_akshare_stock_data,
+    get_akshare_indicators,
     get_akshare_news,
+    get_akshare_fundamentals,
+    get_akshare_balance_sheet,
+    get_akshare_cashflow,
+    get_akshare_income_statement,
     AkshareUnavailableError,
     market_of,
 )
@@ -82,23 +87,28 @@ VENDOR_METHODS = {
     },
     # technical_indicators
     "get_indicators": {
+        "akshare": get_akshare_indicators,
         "alpha_vantage": get_alpha_vantage_indicator,
         "yfinance": get_stock_stats_indicators_window,
     },
     # fundamental_data
     "get_fundamentals": {
+        "akshare": get_akshare_fundamentals,
         "alpha_vantage": get_alpha_vantage_fundamentals,
         "yfinance": get_yfinance_fundamentals,
     },
     "get_balance_sheet": {
+        "akshare": get_akshare_balance_sheet,
         "alpha_vantage": get_alpha_vantage_balance_sheet,
         "yfinance": get_yfinance_balance_sheet,
     },
     "get_cashflow": {
+        "akshare": get_akshare_cashflow,
         "alpha_vantage": get_alpha_vantage_cashflow,
         "yfinance": get_yfinance_cashflow,
     },
     "get_income_statement": {
+        "akshare": get_akshare_income_statement,
         "alpha_vantage": get_alpha_vantage_income_statement,
         "yfinance": get_yfinance_income_statement,
     },

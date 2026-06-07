@@ -40,6 +40,8 @@
 
 > \*个股新闻 akshare 主力 `stock_news_em` 走**东财**、受反爬影响，D1-4 切片时确认可用源（必要时降级 yfinance）。
 > 行情已确认走**新浪**（`stock_zh_a_daily`/`stock_hk_daily`），不受东财反爬影响。
+> \*\*基本面（D1-3 已实现）源细分**：A股财务走**新浪**（`stock_financial_abstract`/`stock_financial_report_sina`，不反爬）；
+> 港股财务 akshare **无新浪接口**，走**东财 em**（`stock_financial_hk_*`，非 push2his 故可用）。即「行情新浪、A股财务新浪、港股财务东财」。
 
 - **关键区分**：`get_news`（个股新闻）可按市场切 CN 源；但 `get_global_news`（全球宏观）
   只有 yfinance/AV 有，**永远不切 CN 源**（akshare 无全球宏观）。

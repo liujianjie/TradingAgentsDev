@@ -54,6 +54,8 @@ def get_stock_stats_indicators_window(
         str, "The current trading date you are trading on, YYYY-mm-dd"
     ],
     look_back_days: Annotated[int, "how many days to look back"],
+    ohlcv_fetcher=None,
+    ohlcv_tag: str = "YFin",
 ) -> str:
 
     best_ind_params = {
@@ -140,30 +142,36 @@ def get_stock_stats_indicators_window(
 
     # Optimized: Get stock data once and calculate indicators for all dates
     try:
-        indicator_data = _get_stock_stats_bulk(symbol, indicator, curr_date)
-        
+        indicator_data = _get_stock_stats_bulk(
+            symbol, indicator, curr_date, ohlcv_fetcher, ohlcv_tag
+        )
+
         # Generate the date range we need
         current_dt = curr_date_dt
         date_values = []
-        
+
         while current_dt >= before:
             date_str = current_dt.strftime('%Y-%m-%d')
-            
+
             # Look up the indicator value for this date
             if date_str in indicator_data:
                 indicator_value = indicator_data[date_str]
             else:
                 indicator_value = "N/A: Not a trading day (weekend or holiday)"
-            
+
             date_values.append((date_str, indicator_value))
             current_dt = current_dt - relativedelta(days=1)
-        
+
         # Build the result string
         ind_string = ""
         for date_str, value in date_values:
             ind_string += f"{date_str}: {value}\n"
-        
+
     except Exception as e:
+        # 自定义 OHLCV 源（如 akshare）取数失败：上抛让路由做 vendor 级 fallback
+        # （回落到 yfinance 指标），而非在此静默改用 yfinance OHLCV 造成源不一致。
+        if ohlcv_fetcher is not None:
+            raise
         print(f"Error getting bulk stockstats data: {e}")
         # Fallback to original implementation if bulk method fails
         ind_string = ""
@@ -188,16 +196,20 @@ def get_stock_stats_indicators_window(
 def _get_stock_stats_bulk(
     symbol: Annotated[str, "ticker symbol of the company"],
     indicator: Annotated[str, "technical indicator to calculate"],
-    curr_date: Annotated[str, "current date for reference"]
+    curr_date: Annotated[str, "current date for reference"],
+    ohlcv_fetcher=None,
+    ohlcv_tag: str = "YFin",
 ) -> dict:
     """
     Optimized bulk calculation of stock stats indicators.
     Fetches data once and calculates indicator for all available dates.
     Returns dict mapping date strings to indicator values.
+
+    OHLCV 来源可插拔（见 ``load_ohlcv``）：默认 yfinance；akshare 路径传入新浪 fetcher。
     """
     from stockstats import wrap
 
-    data = load_ohlcv(symbol, curr_date)
+    data = load_ohlcv(symbol, curr_date, fetcher=ohlcv_fetcher, source_tag=ohlcv_tag)
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     

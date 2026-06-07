@@ -92,12 +92,21 @@ def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
+def load_ohlcv(
+    symbol: str,
+    curr_date: str,
+    fetcher=None,
+    source_tag: str = "YFin",
+) -> pd.DataFrame:
     """Fetch OHLCV data with caching, filtered to prevent look-ahead bias.
 
     Downloads 15 years of data up to today and caches per symbol. On
     subsequent calls the cache is reused. Rows after curr_date are
     filtered out so backtests never see future prices.
+
+    OHLCV 来源可插拔：``fetcher=None`` 走默认 yfinance（行为不变）；传入
+    ``fetcher(symbol, start, end) -> DataFrame``（如 akshare 新浪源）则改用它取数。
+    ``source_tag`` 用于区分缓存文件名（不同源各存一份，互不覆盖）。
     """
     # Reject ticker values that would escape the cache directory when
     # interpolated into the cache filename (e.g. ``../../tmp/x``).
@@ -115,12 +124,12 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     os.makedirs(config["data_cache_dir"], exist_ok=True)
     data_file = os.path.join(
         config["data_cache_dir"],
-        f"{safe_symbol}-YFin-data-{start_str}-{end_str}.csv",
+        f"{safe_symbol}-{source_tag}-data-{start_str}-{end_str}.csv",
     )
 
     if os.path.exists(data_file):
         data = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
-    else:
+    elif fetcher is None:
         data = yf_retry(lambda: yf.download(
             symbol,
             start=start_str,
@@ -130,6 +139,10 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
             auto_adjust=True,
         ))
         data = _ensure_date_column(data.reset_index())
+        data.to_csv(data_file, index=False, encoding="utf-8")
+    else:
+        # 自定义源（如 akshare）：fetcher 已返回含 Date 列的 OHLCV，无需 reset_index
+        data = fetcher(symbol, start_str, end_str)
         data.to_csv(data_file, index=False, encoding="utf-8")
 
     data = _clean_dataframe(data)

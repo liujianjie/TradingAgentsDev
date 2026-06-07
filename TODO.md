@@ -7,16 +7,29 @@
 ## 🟡 进行中 / 下一步
 
 ### 数据源按市场路由（详见 `PLAN.md`「数据源策略」）
-D1 行情切片已完成（见下方已完成区）；继续后续 vendor 切片，**均走 akshare 新浪源，不用东财**（东财反爬，见搁置项）。
+D1 核心切片均已完成：行情(下方已完成区) + **D1-2 技术指标 / D1-3 基本面 / D1-4 个股新闻**（见各项）。
+A股财务/行情/指标**走 akshare 新浪源**，港股财务走东财 em（非 push2his），**均不用东财行情接口**（反爬，见搁置项）。
+剩 D1-5（加固）+ D2（UI 数据源选择）。
 
-- [ ] **D1-2 · akshare 技术指标**（get_indicators）
-  - Acceptance: A股/港股 `get_indicators` 走 akshare 新浪 OHLCV + 复用 stockstats 算指标，输出与 yfinance 同格式
-  - Verify: `route_to_vendor('get_indicators','600519.SS',...)` 命中 akshare 并返回指标；`07709.HK` 同样有值
-  - Files: `tradingagents/dataflows/akshare_utils.py`、`interface.py`（VENDOR_METHODS 注册 get_indicators）
+- [x] **D1-2 · akshare 技术指标**（get_indicators）✅ 2026-06-07
+  - 实现: 把 OHLCV 来源做成**可插拔**——`load_ohlcv` 加 `fetcher`/`source_tag`（默认 yfinance 不变、
+    缓存文件名各源独立 `{sym}-{tag}-data`）；`get_stock_stats_indicators_window`/`_get_stock_stats_bulk`
+    透传 fetcher。akshare 只提供新浪 OHLCV fetcher（`_fetch_akshare_ohlcv_df`，与行情同源同口径=新浪前复权），
+    **复用 yfinance 同一套指标窗口+描述逻辑**，输出格式完全一致。自定义源取数失败时上抛 → 路由 vendor 级
+    fallback 到 yfinance 指标（不静默改用 yfinance OHLCV 造成源不一致）。
+  - 实测: `600519.SS` rsi 走 akshare 新浪取到值（缓存生成 `600519.SS-akshare-data` 证实非回落）；
+    `7709.HK`(ETP) rsi 同样有值；`AAPL` akshare 正确弃权 → fallback yfinance；旧 4 参数调用签名兼容。
+  - Files: `akshare_utils.py`、`stockstats_utils.py`、`y_finance.py`、`interface.py`（注册 get_indicators）
 
-- [ ] **D1-3 · akshare 基本面**（get_fundamentals / balance / cashflow / income）
-  - Acceptance: A股走 akshare 财务（不反爬源，如新浪/`stock_financial_abstract`）；港股 ETP 无财报时优雅降级不崩
-  - Verify: `600519.SS` 基本面有数据；`07709.HK` 返回"无财报"清晰提示而非异常
+- [x] **D1-3 · akshare 基本面**（get_fundamentals / balance / cashflow / income）✅ 2026-06-07
+  - 实现: A股走**新浪不反爬源**（`stock_financial_abstract` 概览 + `stock_financial_report_sina` 三大报表）；
+    港股走**东财 em**（`stock_financial_hk_analysis_indicator_em` + `stock_financial_hk_report_em`，非 push2his 故可用）。
+    报表统一转成「行项目×报告期」CSV，对齐 yfinance；防 look-ahead 按报告期末 <= curr_date 过滤（同 yfinance 约定）。
+    freq=annual 仅取年报(12-31)、quarterly 含季报；4 个函数注册进 `interface.py` VENDOR_METHODS（akshare 优先）。
+  - 实测: `600519.SS` 基本面/资产负债/利润/现金流均走 akshare 新浪取到真数据（茅台 2025 营收 1720.54亿、ROE 32.53）；
+    `000001.SZ`(平安银行季报)、`0700.HK`(腾讯，东财年报+指标 ROE 21.13%) 均通过。
+  - 降级: `07709.HK`(ETP) akshare 内部 NoneType → AkshareUnavailableError → fallback yfinance，
+    fundamentals 返回 ETP 概览、balance 返回 "No balance sheet data found" 清晰提示，**不崩**。
   - Files: `akshare_utils.py`、`interface.py`
 
 - [x] **D1-4 · akshare 个股新闻**（get_news）✅ 2026-06-07
