@@ -9,7 +9,9 @@
 ### 数据源按市场路由（详见 `PLAN.md`「数据源策略」）
 D1 核心切片均已完成：行情(下方已完成区) + **D1-2 技术指标 / D1-3 基本面 / D1-4 个股新闻**（见各项）。
 A股财务/行情/指标**走 akshare 新浪源**，港股财务走东财 em（非 push2his），**均不用东财行情接口**（反爬，见搁置项）。
-剩 D1-5（加固）+ D2（UI 数据源选择）。
+D1 全系列（行情/指标/基本面/新闻/ticker加固）已收尾。D2 重塑为「智能 fallback + 透明展示」：
+**D2-a 后端空数据/异常自动转源 ✅、D2-b 透明展示用了哪个源 ✅**。D2 完成。
+下一步可选 **settings 设置页**（推送时间 + LLM 模型选择，纯阶段二遗留，与数据源无关）。
 
 - [x] **D1-2 · akshare 技术指标**（get_indicators）✅ 2026-06-07
   - 实现: 把 OHLCV 来源做成**可插拔**——`load_ohlcv` 加 `fetcher`/`source_tag`（默认 yfinance 不变、
@@ -37,17 +39,45 @@ A股财务/行情/指标**走 akshare 新浪源**，港股财务走东财 em（�
   - 实测: 07709.HK 取到 10 条相关中文新闻（"南方两倍做多海力士涨14.98%"），route 命中 akshare
   - 效果: 新闻面有港股真实新闻；情感面 news_block 不再空（StockTwits/Reddit 港股仍无 = 美股社区无解）
 
-- [ ] **D1-5 · ticker 规范化下沉到 yfinance vendor**（加固，当前只在 analyzer 入口）
-  - Acceptance: 绕过 analyzer 入口、直接把 `07709.HK` 传给 yfinance vendor 也能取数（不再 404）
-  - Verify: `get_YFin_data_online('07709.HK',...)` 内部自动归一为 `7709.HK` 成功取数
-  - Files: `tradingagents/dataflows/y_finance.py`
+- [x] **D1-5 · ticker 规范化下沉到 yfinance vendor**（加固）✅ 2026-06-07
+  - 实现: 新增**单一真相源** `dataflows/utils.py:to_yfinance_symbol`（港股前导0：07709.HK→7709.HK，
+    严格只匹配 `\d+.HK`——**韩股 000660.KS 等其他市场原样不动**）。下沉到所有 yfinance 取数入口：
+    `y_finance.py` 6 个函数（data/fundamentals/balance/cashflow/income/insider）+ `stockstats_utils.load_ohlcv`
+    **仅 yfinance 路径归一**（akshare 走新浪要 5 位、由 fetcher 自适配，不污染）。`api/analyzer._normalize_ticker`
+    改为委托该函数（消除重复正则、防漂移）。
+  - 实测: 直传 `get_YFin_data_online('07709.HK',...)` 内部归一为 7709.HK 取到 8 条真数据(不再 404)；
+    akshare 指标直传 `07709.HK` 仍走 5 位正常；analyzer 委托 + 韩股保留均验证；加单测覆盖契约（含韩股陷阱）。
+  - Files: `dataflows/utils.py`、`y_finance.py`、`stockstats_utils.py`、`api/analyzer.py`、`tests/test_ticker_symbol_handling.py`
 
-- [ ] **D2 · UI 数据源选择**（PLAN 已定：自动为主 + 一键覆盖）
-  - Acceptance: 设置页下拉「自动 / 强制 yfinance / 强制 akshare / 强制 AV」，选择透传到 Python 覆盖市场默认
-  - Verify: UI 选「强制 yfinance」后分析 A股，日志显示走 yfinance 而非 akshare
-  - Files: uniapp 设置页、C# `AnalysisController`/`AnalyzeRequest`、`api/analyzer.py`
+### D2 重塑（2026-06-07 用户决策）：纯智能 fallback + 透明展示，**不做手动选源 UI**
+> 用户否决「手动强制单一源」（会"选了没数据的源→白跑一次"）。改为默认智能优先级链 + 自动 fallback，
+> UI/报告只透明展示用了哪个源。详见 `PLAN.md`「数据源策略」。先后端 fallback，再透明展示。
 
-- [ ] **settings 设置页**（阶段二遗留）：推送时间 + LLM 模型选择（建议与 D2 数据源选择同页）
+- [x] **D2-a · 后端 fallback 健壮性（空数据/异常 → 自动转源）** ✅ 2026-06-07
+  - 实现: `route_to_vendor` 两类触发自动转链中下一个源——① vendor **抛任何异常**（广义捕获+WARNING
+    日志：限流/akshare 不可用/AV 无 key 的 ValueError/网络错）② vendor **返回空数据**（`_looks_empty`：
+    None/空串/"No ... found" yfinance 占位）。全链空→返回最后一个清晰"无数据"提示（不裸崩）；
+    全链异常→抛聚合 RuntimeError（含各源异常，便于排查）。
+  - Verify: 合成 vendor 验证四路径（空→转源拿数据 / 异常→转源拿数据 / 全空→提示 / 全异常→聚合抛）；
+    `_looks_empty` 契约；A股基本面 happy path 回归走 akshare 真数据不变。
+  - Files: `interface.py`
+
+- [x] **D2-b · 透明展示「本次用了哪个源 / 降级了什么」** ✅ 2026-06-07
+  - 实现（纵向切片 6 层）: ① `interface.py` threading.local 溯源采集器（`reset/record/get/format_provenance`）
+    + `route_to_vendor` 自动记录「类别→命中源 + 降级跳过的源」② `sentiment_analyst.py` 节点体(主线程)按
+    `<...>` 占位判定 Reddit/StockTwits 降级并记入「社交情感」③ `api/analyzer.py` propagate 前 reset、后
+    `result['data_sources']=format_provenance_summary()`（纯 markdown 表格）④ C# `AnalysisResult.DataSources`
+    （SnakeCaseLower 自动映射 data_sources）⑤ `ReportFormatter` 加"数据源溯源"段（存 MD+推送）⑥ UniApp
+    报告页加"🔌 数据源"段（htmlMap+SECTION_META，空自动隐藏）。
+  - Verify: Python 模拟 600519.SS 跑通——行情/基本面=akshare、个股新闻全链降级显示"无数据/降级跳过
+    akshare,AV,yfinance"、社交情感显示"无数据 + Reddit/StockTwits 仅覆盖美股"；C# `dotnet build` 0 错误；
+    UniApp 2 行镜像现有 section 模式（需前端构建看渲染）。
+  - 限制: 经 ThreadPoolExecutor 子线程的路由（sentiment 并行抓 news）不被 threading.local 采集——但
+    news 已由新闻分析员主线程记录，冗余无碍。
+  - Files: `interface.py`、`sentiment_analyst.py`、`api/analyzer.py`、`AnalysisDtos.cs`、`ReportFormatter.cs`、`uniapp .../analysis/index.vue`
+
+- [ ] **settings 设置页**（阶段二遗留）：推送时间 + LLM 模型选择
+  - 注: 数据源**不再放设置页**（D2 已定：纯智能 fallback、不做手动选源；用了哪个源由报告"数据源溯源"段透明展示）
 
 - [低优先/可选] **baostock 第二层 fallback**
   - Acceptance: A股链 `akshare(新浪)→baostock→yfinance`；baostock 是独立免费 API（非爬虫）的真冗余

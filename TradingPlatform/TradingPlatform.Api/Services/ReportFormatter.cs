@@ -42,6 +42,7 @@ public static class ReportFormatter
         AppendSection(sb, "情感面分析", r.SentimentReport, 1000);
         AppendSection(sb, "新闻面分析", r.NewsReport, 1500);
         AppendSection(sb, "基本面分析", r.FundamentalsReport, 1500);
+        AppendSection(sb, "数据源溯源", r.DataSources, 800);
 
         var title = BuildTitle(ticker, r.Decision);
         return (title, sb.ToString());

@@ -9,6 +9,9 @@ public class AnalysisResult
     public string? FundamentalsReport { get; set; }
     public string? InvestmentPlan { get; set; }
     public string? FinalTradeDecision { get; set; }
+    // 数据源溯源 markdown 表格（本次各类数据实际命中哪个源/降级了什么）。
+    // Python 端 snake_case "data_sources"，经 SnakeCaseLower 策略映射到此属性。
+    public string? DataSources { get; set; }
     public string? ReportPath { get; set; }
 }
 

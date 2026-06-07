@@ -78,6 +78,23 @@ def create_sentiment_analyst(llm):
             stocktwits_block = f_stocktwits.result()
             reddit_block = f_reddit.result()
 
+        # 记录社交情感源命中/降级（不走 route_to_vendor，故在此主线程手动记入溯源）。
+        # 两个 fetcher 对无数据/异常都返回 <...> 占位串（见 reddit/stocktwits 模块），以此判定。
+        # Reddit/StockTwits 是美股社区，港股/A股无替代源——透明告知用户而非假装换源找。
+        from tradingagents.dataflows.interface import record_provenance
+
+        def _ok(block, name):
+            return name if block and not block.strip().startswith("<") else None
+        st_ok, rd_ok = _ok(stocktwits_block, "StockTwits"), _ok(reddit_block, "Reddit")
+        served = [x for x in (st_ok, rd_ok) if x]
+        degraded = [n for n, ok in (("StockTwits", st_ok), ("Reddit", rd_ok)) if not ok]
+        record_provenance(
+            "社交情感",
+            "、".join(served) if served else None,
+            degraded=degraded,
+            note="" if served else "Reddit/StockTwits 仅覆盖美股，本标的无社交情感数据",
+        )
+
         system_message = _build_system_message(
             ticker=ticker,
             start_date=start_date,

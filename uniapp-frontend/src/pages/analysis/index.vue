@@ -103,6 +103,7 @@ const htmlMap = computed(() => {
     sentiment: renderMarkdown(r.sentimentReport),
     news: renderMarkdown(r.newsReport),
     fundamentals: renderMarkdown(r.fundamentalsReport),
+    sources: renderMarkdown(r.dataSources),
   }
 })
 
@@ -113,6 +114,7 @@ const SECTION_META = [
   { key: 'sentiment', icon: '💬', title: '情感面' },
   { key: 'news', icon: '📰', title: '新闻面' },
   { key: 'fundamentals', icon: '🏢', title: '基本面' },
+  { key: 'sources', icon: '🔌', title: '数据源' },
 ]
 const sections = computed(() => SECTION_META.filter(s => htmlMap.value[s.key]))
 

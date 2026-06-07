@@ -1,6 +1,5 @@
 import uuid
 import asyncio
-import re
 import sys
 import os
 from datetime import datetime
@@ -11,6 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.dataflows.utils import to_yfinance_symbol
+from tradingagents.dataflows.interface import reset_provenance, format_provenance_summary
 from .models import JobStatus
 
 _executor = ThreadPoolExecutor(max_workers=2)
@@ -18,21 +19,13 @@ _jobs: Dict[str, dict] = {}
 
 
 def _normalize_ticker(ticker: str) -> str:
-    """规范化股票代码以匹配 Yahoo Finance 的格式约定。
+    """规范化股票代码以匹配 Yahoo Finance 的格式约定（港股前导 0：07709.HK→7709.HK）。
 
-    目前只处理港股。港交所主板代码是 5 位（带前导 0，如 07709 = XL二南方海力士、
-    00700 = 腾讯），但 Yahoo Finance 用「去前导 0 后补足 4 位」的格式：
-    07709 → 7709、00700 → 0700、09988 → 9988。用户按券商/港交所习惯输入 5 位代码
-    （07709.HK）会让 yfinance 404——代码真实存在，只是格式不符 Yahoo 约定。
-
-    其他市场不动：美股无后缀、A股 .SS/.SZ 六位、韩股 .KS 六位都保持原样。
+    归一逻辑已**下沉到 yfinance vendor 层**（``to_yfinance_symbol``），各 yfinance 取数
+    入口自身也会归一；此处入口提前归一，使 job 记录 / 报告命名 / 预检 全程用统一代码。
+    单一真相源在 ``tradingagents.dataflows.utils.to_yfinance_symbol``。
     """
-    t = ticker.strip()
-    m = re.match(r"^(\d+)\.(HK|hk)$", t)
-    if m:
-        code = (m.group(1).lstrip("0") or "0").zfill(4)
-        return f"{code}.HK"
-    return t
+    return to_yfinance_symbol(ticker)
 
 
 def _precheck_ticker(ticker: str) -> Optional[str]:
@@ -70,6 +63,9 @@ def _run_analysis(job_id: str, ticker: str, date: str, config: dict):
             _update_job(job_id, status=JobStatus.failed, error=precheck_err)
             return
         ta = TradingAgentsGraph(debug=False, config=config)
+        # 透明展示「本次用了哪个源/降级了什么」：分析前清空溯源，分析后汇总。
+        # reset/format 与 propagate 同在本 worker 线程，threading.local 可采集到主线程路由。
+        reset_provenance()
         final_state, decision = ta.propagate(ticker, date)
 
         result = {
@@ -80,6 +76,7 @@ def _run_analysis(job_id: str, ticker: str, date: str, config: dict):
             "fundamentals_report": final_state.get("fundamentals_report", ""),
             "investment_plan": final_state.get("investment_plan", ""),
             "final_trade_decision": final_state.get("final_trade_decision", ""),
+            "data_sources": format_provenance_summary(),
         }
         _update_job(job_id, status=JobStatus.completed, progress=100, result=result)
     except Exception as e:
