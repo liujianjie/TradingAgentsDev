@@ -5,6 +5,7 @@ import pandas as pd
 import yfinance as yf
 import os
 from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
+from .utils import to_yfinance_symbol
 
 def get_YFin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -14,6 +15,8 @@ def get_YFin_data_online(
 
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
+
+    symbol = to_yfinance_symbol(symbol)  # 港股前导 0 归一为 Yahoo 格式（07709.HK→7709.HK）
 
     # Create ticker object
     ticker = yf.Ticker(symbol.upper())
@@ -263,6 +266,7 @@ def get_fundamentals(
 ):
     """Get company fundamentals overview from yfinance."""
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         ticker_obj = yf.Ticker(ticker.upper())
         info = yf_retry(lambda: ticker_obj.info)
 
@@ -321,6 +325,7 @@ def get_balance_sheet(
 ):
     """Get balance sheet data from yfinance."""
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
@@ -353,6 +358,7 @@ def get_cashflow(
 ):
     """Get cash flow data from yfinance."""
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
@@ -385,6 +391,7 @@ def get_income_statement(
 ):
     """Get income statement data from yfinance."""
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         ticker_obj = yf.Ticker(ticker.upper())
 
         if freq.lower() == "quarterly":
@@ -415,6 +422,7 @@ def get_insider_transactions(
 ):
     """Get insider transactions data from yfinance."""
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         ticker_obj = yf.Ticker(ticker.upper())
         data = yf_retry(lambda: ticker_obj.insider_transactions)
         

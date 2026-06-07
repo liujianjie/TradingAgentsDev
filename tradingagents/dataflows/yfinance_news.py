@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 
 from .config import get_config
 from .stockstats_utils import yf_retry
+from .utils import to_yfinance_symbol
 
 
 def _extract_article_data(article: dict) -> dict:
@@ -69,6 +70,7 @@ def get_news_yfinance(
     """
     article_limit = get_config()["news_article_limit"]
     try:
+        ticker = to_yfinance_symbol(ticker)  # 港股前导 0 归一（07709.HK→7709.HK）
         stock = yf.Ticker(ticker)
         news = yf_retry(lambda: stock.get_news(count=article_limit))
 

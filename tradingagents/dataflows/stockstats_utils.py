@@ -8,7 +8,7 @@ from stockstats import wrap
 from typing import Annotated
 import os
 from .config import get_config
-from .utils import safe_ticker_component
+from .utils import safe_ticker_component, to_yfinance_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +108,11 @@ def load_ohlcv(
     ``fetcher(symbol, start, end) -> DataFrame``（如 akshare 新浪源）则改用它取数。
     ``source_tag`` 用于区分缓存文件名（不同源各存一份，互不覆盖）。
     """
+    # yfinance 路径才把港股代码归一到 Yahoo 格式（07709.HK→7709.HK）；自定义源
+    # （akshare 走新浪、要 5 位带前导 0）由 fetcher 自行适配，不能在此归一。
+    if fetcher is None:
+        symbol = to_yfinance_symbol(symbol)
+
     # Reject ticker values that would escape the cache directory when
     # interpolated into the cache filename (e.g. ``../../tmp/x``).
     safe_symbol = safe_ticker_component(symbol)
