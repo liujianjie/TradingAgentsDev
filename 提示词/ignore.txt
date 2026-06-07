@@ -1,0 +1,2 @@
+404 Client Error: Not Found for url: https://query2.finance.yahoo.com/v10/finance/quoteSummary/07709.HK?modules=financialData%2CquoteType%2CdefaultKeyStatistics%2CassetProfile%2CsummaryDetail&corsDomain=finance.yahoo.com&formatted=false&symbol=07709.HK&lang=en-US&region=US&crumb=Dko0ZGh.SI6
+uvicorn api.main:app --port 28100
