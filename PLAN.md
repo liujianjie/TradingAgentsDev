@@ -1,7 +1,8 @@
 # TradingAgents 平台扩展 · 路线图（PLAN）
 
-> 维护：随进展更新 | 最近更新：2026-06-06
-> 详细规格见 `docs/spec-trading-platform.md`；本文件是高层路线 + 关键决策速查。
+> 维护：随进展更新 | 最近更新：2026-06-07
+> 详细规格见 `docs/spec-trading-platform.md`；任务清单见 `TODO.md`；本文件是高层路线 + 关键决策速查。
+> （对应 agent-skills 工作流的 PLAN 层：SPECIFY=docs/spec → **PLAN=本文件** → TASKS=TODO.md → IMPLEMENT）
 
 ## 三阶段总览
 
@@ -15,7 +16,10 @@
 
 - ✅ 前端「清新金融卡片风」重做（设计令牌 `uniapp-frontend/src/uni.scss`）
 - ✅ 分析报告在线 Markdown 渲染（`marked` + `mp-html`，跨 H5/小程序）
-- ⬜ settings 设置页（推送时间 + LLM 模型选择）—— 阶段二遗留
+- ✅ 报告保存本地 MD（`reports/`）+ 前端显示保存路径
+- ✅ 多 LLM 支持（新增 xAI/Grok）；数据获取健壮性修复（TLS/超时/港股代码规范化）
+- 🔄 数据源按市场路由（akshare 新浪源）— 行情切片完成，后续切片见 `TODO.md`
+- ⬜ settings 设置页（推送时间 + LLM 模型选择 + 数据源选择 D2）—— 阶段二遗留
 - ⬜ 实时进度从 5 秒轮询升级 SignalR（可选，非必须）
 
 ## 数据源策略（关键决策）
@@ -30,9 +34,12 @@
 ### 按「市场 × 类别」的源矩阵（目标）
 | 市场（后缀） | 行情/技术/基本面 | 个股新闻 | 全球宏观新闻 |
 |---|---|---|---|
-| A股 `.SS/.SZ` | **akshare**（免费不限量）→ yfinance | akshare 中文（东财）→ yfinance | yfinance/AV（统一） |
-| 港股 `.HK` | **akshare 港股** → yfinance | akshare → yfinance | yfinance/AV（统一） |
+| A股 `.SS/.SZ` | **akshare 新浪** → yfinance | akshare 中文新闻* → yfinance | yfinance/AV（统一） |
+| 港股 `.HK` | **akshare 新浪** → yfinance | akshare 中文新闻* → yfinance | yfinance/AV（统一） |
 | 美股/日韩/英股 | **yfinance** → alpha_vantage | yfinance → AV | yfinance/AV |
+
+> \*个股新闻 akshare 主力 `stock_news_em` 走**东财**、受反爬影响，D1-4 切片时确认可用源（必要时降级 yfinance）。
+> 行情已确认走**新浪**（`stock_zh_a_daily`/`stock_hk_daily`），不受东财反爬影响。
 
 - **关键区分**：`get_news`（个股新闻）可按市场切 CN 源；但 `get_global_news`（全球宏观）
   只有 yfinance/AV 有，**永远不切 CN 源**（akshare 无全球宏观）。
@@ -49,9 +56,11 @@
 ## 架构事实（改动前必读）
 
 - 数据层是 **vendor 路由 + fallback**（`tradingagents/dataflows/interface.py`）。
-  新增数据源 = 写模块实现 9 个方法 + 注册 `VENDOR_LIST` / `VENDOR_METHODS`。
-- fallback 逻辑（`route_to_vendor`，约 159 行）**只 catch `AlphaVantageRateLimitError`**。
-  要支持"无此股票就切源"，需扩展这个 except。
+  新增数据源 = 写模块实现对应方法 + 注册 `VENDOR_LIST` / `VENDOR_METHODS`。
+- 路由已支持**按 ticker 市场自动选 vendor**（`_auto_vendor_chain`：A股/港股→akshare 优先、
+  美股→yfinance；`get_global_news` 恒走 yfinance/AV）。config 显式指定（UI 覆盖）优先于自动。
+- fallback 已扩展：`route_to_vendor` 现 catch `AlphaVantageRateLimitError` + `AkshareUnavailableError`
+  （akshare 失败/无数据/非 CN 市场 → 自动切链中下一个 vendor）。
 - LLM key 流向：`config/apikeys.local.json` → `api/config_loader.py` 注入环境变量
   → `load_apikeys()` 只在 **API 启动时执行一次**（改 key 后必须重启 Python 服务）。
 - deepseek/qwen/glm/minimax 等 OpenAI 兼容源会**自动解析各自官方 endpoint**

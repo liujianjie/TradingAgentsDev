@@ -1,85 +1,87 @@
 # TODO
 
-> 最近更新：2026-06-06 | 路线图见 `PLAN.md`
-
-## 🔴 阻塞中
-
-- [ ] **DeepSeek API key 无效（401）** — 当前 `apikeys.local.json` 的 deepseek key
-      尾号 ...0979 被 DeepSeek 服务端拒绝（`authentication_error`）。key 结构正常
-      （sk- + 32 位），所以是**凭据本身失效**（多半已在平台被重置/删除/欠费）。
-      → 需用户去 platform.deepseek.com 确认或重新生成 key，填回 `apikeys.local.json`，
-        **然后重启 Python API 服务**（load_apikeys 只在启动时读一次）。
-      → 或临时把 `active_provider` 换成其他已配且有效的 provider。
+> 最近更新：2026-06-07 | 路线见 `PLAN.md` | 规格见 `docs/spec-trading-platform.md`
+> 本文件 = agent-skills 工作流的 **TASKS** 层（SPECIFY→PLAN→**TASKS**→IMPLEMENT）。
+> 未完成任务按 agent-skills 结构写：**Acceptance**(完成标准) / **Verify**(如何验证) / **Files**(涉及文件)。
 
 ## 🟡 进行中 / 下一步
 
-- [ ] **数据源按市场自动路由 + UI 可选**（用户 2026-06-07 拍板，详见 PLAN.md「数据源策略」）
-      akshare 已装（1.18.64），接口已探测可用（A股行情/新闻/财务✓，港股行情✓但偶发 ConnectionError）。
+### 数据源按市场路由（详见 `PLAN.md`「数据源策略」）
+D1 行情切片已完成（见下方已完成区）；继续后续 vendor 切片，**均走 akshare 新浪源，不用东财**（东财反爬，见搁置项）。
 
-  **阶段 D1 — 后端核心路由（先做，让 A股/港股立刻有真数据）**
-  - [ ] `dataflows/akshare_utils.py`：ticker 格式转换 + 市场判断 + akshare 调用重试
-        - 市场判断：`.SS/.SZ`→A股、`.HK`→港股、其余→非 CN（akshare 不接）
-        - 格式转换：A股 `600519.SS`→`600519`；港股 `7709.HK`→`07709`（补5位带前导0）
-        - akshare 重试包装（ConnectionError/RemoteDisconnected → 退避重试，耗尽抛"无数据"）
-        - 列名映射：日期→Date 开盘→Open 收盘→Close 最高→High 最低→Low 成交量→Volume 成交额→Amount
-  - [ ] akshare vendor 方法（按切片推进，每个验证后再下一个）：
-        - [ ] `get_stock_data`（行情）— `stock_zh_a_hist` / `stock_hk_hist`，返回与 yfinance 同格式 header+CSV
-        - [ ] `get_indicators`（技术）— 取 OHLCV 后复用 stockstats（同 yfinance 路径）
-        - [ ] `get_fundamentals`/`balance`/`cashflow`/`income` — `stock_financial_abstract` 等
-        - [ ] `get_news`（个股中文新闻）— `stock_news_em`
-  - [ ] 路由 market-aware：`interface.py` 加「按 ticker 后缀判市场 → 选该市场最优 vendor」默认映射
-        - [ ] `route_to_vendor` 应用市场路由；扩展 fallback except（akshare 失败/无数据 → 切 yfinance）
-        - [ ] 注册 akshare 进 `VENDOR_LIST` / `VENDOR_METHODS`
-  - [ ] **不切 CN 源**：`get_global_news`（全球宏观）保持 yfinance/AV，akshare 无此能力
-  - [ ] 验证：A股 600519.SS → akshare、港股 07709.HK → akshare、美股 AAPL → yfinance、韩股 000660.KS → yfinance
+- [ ] **D1-2 · akshare 技术指标**（get_indicators）
+  - Acceptance: A股/港股 `get_indicators` 走 akshare 新浪 OHLCV + 复用 stockstats 算指标，输出与 yfinance 同格式
+  - Verify: `route_to_vendor('get_indicators','600519.SS',...)` 命中 akshare 并返回指标；`07709.HK` 同样有值
+  - Files: `tradingagents/dataflows/akshare_utils.py`、`interface.py`（VENDOR_METHODS 注册 get_indicators）
 
-  **阶段 D2 — UI 数据源选择（随后补）**
-  - [ ] 设置页加「数据源」下拉：自动（默认）/ 强制 yfinance / 强制 akshare / 强制 AV
-  - [ ] C# 透传 dataSource 参数 → Python `/api/v1/analyze` → analyzer 注入 config 覆盖市场默认
+- [ ] **D1-3 · akshare 基本面**（get_fundamentals / balance / cashflow / income）
+  - Acceptance: A股走 akshare 财务（不反爬源，如新浪/`stock_financial_abstract`）；港股 ETP 无财报时优雅降级不崩
+  - Verify: `600519.SS` 基本面有数据；`07709.HK` 返回"无财报"清晰提示而非异常
+  - Files: `akshare_utils.py`、`interface.py`
 
-  **D1 进度（2026-06-07）**
-  - [x] akshare_utils.py 行情切片 + 市场判断/格式转换/重试/节流（列名映射）
-  - [x] interface.py 注册 akshare + market-aware 路由 + fallback 扩展到 AkshareUnavailableError
-  - [x] analyzer.py data_vendors → "auto"（触发市场路由）
-  - [x] 验证：市场分流 / 路由选择 / fallback 全通过
-  - [x] **行情切片端到端实测通过**：akshare 新浪源取 A股(沪 600519/深 000001)+港股(0700/07709)，
-        route 在 auto 下命中 akshare(sina)
-        - 真因：东财 push2his API 反爬（RemoteDisconnected，直连大陆 IP 也拒）+ 用户 Clash TUN 全局代理绕境外
-        - 解法：akshare 行情改走**新浪源** stock_zh_a_daily / stock_hk_daily（不反爬、英文列名、小众港股也有）
-  - [ ] 加固：ticker 规范化下沉到 yfinance vendor（当前只在 analyzer 入口，绕过入口会 404）
-  - [ ] 下一切片：get_indicators（akshare OHLCV + 复用 stockstats）→ 基本面 → 个股新闻
-        （注：基本面/新闻若用 akshare 也要选不反爬的源，别用东财 push2 系列）
-  - [可选/低优先] A股加 baostock 作第二层独立 fallback（akshare新浪→baostock→yfinance）；
-        baostock 是独立免费 API（非爬虫），但 TUN 下需 Clash 加 baostock.com 直连。新浪已稳，不急。
+- [ ] **D1-4 · akshare 个股新闻**（get_news）
+  - Acceptance: A股/港股 `get_news` 走 akshare 中文新闻（`stock_news_em`，不反爬源）；`get_global_news` 仍走 yfinance/AV
+  - Verify: `600519.SS` 有中文新闻；`get_global_news` 不命中 akshare
+  - Files: `akshare_utils.py`、`interface.py`
+  - 参考: TradingAgents-CN 的 `stock_news_em` + 情感分类/重要性评估逻辑
 
-  **🔖 搁置待翻案：东财数据源（用户 2026-06-07 决定先记录、后续再议，现用新浪翻篇）**
-  - 现状决定：行情 OHLCV 用新浪源（与东财同源同质、已验证可用），暂不引入东财。
-  - 东财的真正价值在**衍生数据**（研报 / 资金流 / 龙虎榜 / 北向资金），**不是**基础行情 OHLCV
-    （日线开高低收量是交易所统一数据，新浪=东财=baostock，已验证茅台 1272.86 两边一致）。
-    → 将来真要做"资金流/龙虎榜"这类分析时，再攻克东财才划算。
-  - TUN 环境下东财的障碍（实测，翻案时直接看这里）：
-    - `www.eastmoney.com` chrome120 直连 HTTP 200 → 指纹够用、eastmoney 直连规则生效
-    - 但 `push2his` API 子域名 chrome120/chrome110/chrome 全 `curl(56) Connection closed`
-    - 结论：**指纹不是瓶颈，push2his 子域名被 Clash 路由到代理(台湾)被东财拒才是**。
-      故 TradingAgents-CN 的 curl_cffi(chrome120) 方案（它直连大陆有效）搬到本 TUN 环境无效。
-  - 翻案攻克路径：① Clash 让 push2his 真直连（清 fake-ip 缓存 / DNS 段加 `fake-ip-filter: eastmoney.com`
-    / 查 rules 顺序确认 DIRECT 在代理规则前）→ 用 www 同款直连验证 push2his 走大陆
-    ② 复刻 TradingAgents-CN 的 monkeypatch（`providers/china/akshare.py:43-150`，eastmoney URL 走
-    `curl_cffi.get(impersonate="chrome120")`）③ 把东财源加进 fallback 链作可选。
+- [ ] **D1-5 · ticker 规范化下沉到 yfinance vendor**（加固，当前只在 analyzer 入口）
+  - Acceptance: 绕过 analyzer 入口、直接把 `07709.HK` 传给 yfinance vendor 也能取数（不再 404）
+  - Verify: `get_YFin_data_online('07709.HK',...)` 内部自动归一为 `7709.HK` 成功取数
+  - Files: `tradingagents/dataflows/y_finance.py`
 
-- [ ] **settings 设置页**（阶段二遗留）：推送时间配置 + LLM 模型选择
+- [ ] **D2 · UI 数据源选择**（PLAN 已定：自动为主 + 一键覆盖）
+  - Acceptance: 设置页下拉「自动 / 强制 yfinance / 强制 akshare / 强制 AV」，选择透传到 Python 覆盖市场默认
+  - Verify: UI 选「强制 yfinance」后分析 A股，日志显示走 yfinance 而非 akshare
+  - Files: uniapp 设置页、C# `AnalysisController`/`AnalyzeRequest`、`api/analyzer.py`
+
+- [ ] **settings 设置页**（阶段二遗留）：推送时间 + LLM 模型选择（建议与 D2 数据源选择同页）
+
+- [低优先/可选] **baostock 第二层 fallback**
+  - Acceptance: A股链 `akshare(新浪)→baostock→yfinance`；baostock 是独立免费 API（非爬虫）的真冗余
+  - Verify: 模拟新浪失败时自动落 baostock 取到数据
+  - Files: 新建 `baostock` vendor + `interface.py`
+  - 注: TUN 下需 Clash 加 `baostock.com` 直连。新浪已稳，不急。
+
+### 🔖 搁置待翻案：东财数据源（用户 2026-06-07 决定先记录、后续再议，现用新浪翻篇）
+- 现状决定：行情 OHLCV 用新浪源（与东财同源同质、已验证可用），暂不引入东财。
+- 东财的真正价值在**衍生数据**（研报 / 资金流 / 龙虎榜 / 北向资金），**不是**基础行情 OHLCV
+  （日线开高低收量是交易所统一数据，新浪=东财=baostock，已验证茅台 1272.86 两边一致）。
+  → 将来真要做"资金流/龙虎榜"这类分析时，再攻克东财才划算。
+- TUN 环境下东财的障碍（实测，翻案时直接看这里）：
+  - `www.eastmoney.com` chrome120 直连 HTTP 200 → 指纹够用、eastmoney 直连规则生效
+  - 但 `push2his` API 子域名 chrome120/chrome110/chrome 全 `curl(56) Connection closed`
+  - 结论：**指纹不是瓶颈，push2his 子域名被 Clash 路由到代理(台湾)被东财拒才是**。
+    故 TradingAgents-CN 的 curl_cffi(chrome120) 方案（它直连大陆有效）搬到本 TUN 环境无效。
+- 翻案攻克路径：① Clash 让 push2his 真直连（清 fake-ip 缓存 / DNS 段加 `fake-ip-filter: eastmoney.com`
+  / 查 rules 顺序确认 DIRECT 在代理规则前）→ 用 www 同款直连验证 push2his 走大陆
+  ② 复刻 TradingAgents-CN 的 monkeypatch（`providers/china/akshare.py:43-150`，eastmoney URL 走
+  `curl_cffi.get(impersonate="chrome120")`）③ 把东财源加进 fallback 链作可选。
 
 ## 🟢 已完成
 
-- [x] 前端「清新金融卡片风」重做（已提交 c6a9088）
-- [x] 分析报告在线 Markdown 渲染 marked + mp-html（已提交 c6a9088）
-- [x] 数据源切回 yfinance 主力以支持全球+日韩（`api/analyzer.py`，未提交）
+### 本次会话（提交 `1e7d37e`，2026-06-07）
+- [x] **xAI(Grok) provider 接入** + apikeys 文档 xAI 章节（已验证 key + deep/quick 模型可用）
+- [x] **yfinance 切 requests backend** 绕 curl_cffi TLS 错误（韩股 `.KS` 等非美市场）
+- [x] **yf_retry 增加网络超时/连接错误重试**（中国大陆访问 Yahoo 偶发超时自愈）
+- [x] **港股 ticker 前导0规范化**（`07709.HK`→`7709.HK`）+ analyzer 开跑前预检
+- [x] **数据源 D1 行情切片**：akshare 新浪源 + 按市场自动路由（A股/港股→akshare，美股→yfinance）+ 失败 fallback；A股(沪深)/港股(0700/07709) 端到端实测通过
+- [x] **情感分析**三数据源并行拉取 + 全异常兜底（防 GFW 干扰冒泡杀死节点）
+- [x] **新闻分析** prompt 加约束，禁止把无关宏观新闻牵强关联到标的
+- [x] **报告保存**：C# 编排器分析完成后存 MD 到 `reports/` + 前端显示保存路径
+- [x] **文档**：PLAN/TODO 路线 + `docs/setup-clash-cn-direct.md`（Clash TUN 国内源直连指导）
+
+### 更早（已提交）
+- [x] 前端「清新金融卡片风」重做（`c6a9088`）
+- [x] 分析报告在线 Markdown 渲染 marked + mp-html（`c6a9088`）
 - [x] 修复自选股中文名乱码 `?`（DB 直接修，QQQ→纳斯达克100 ETF 等 8 条）
+- [x] ~~DeepSeek key 失效阻塞~~ → 已改用 **xAI** 绕过，不再阻塞
 
 ## 📌 已知坑（避免重复踩）
 
-- **akshare 行情走新浪源**（stock_zh_a_daily / stock_hk_daily），**别用东财源**（stock_zh_a_hist/stock_hk_hist）——东财 push2his API 反爬，直连大陆 IP 也 RemoteDisconnected。新浪源不反爬。已加 1.2s 全局节流 + 必须保留 yfinance fallback。
+- **akshare 行情走新浪源**（`stock_zh_a_daily` / `stock_hk_daily`），**别用东财源**（`stock_zh_a_hist`/`stock_hk_hist`）——东财 push2his API 反爬，直连大陆 IP 也 RemoteDisconnected。已加 1.2s 全局节流 + 必须保留 yfinance fallback。
 - **用户网络是 Clash Verge TUN 全局代理**（为访问境外 grok）：会把国内数据源（新浪/东财）流量也绕到境外节点导致失败。需在 Clash 让国内域名直连（见 `docs/setup-clash-cn-direct.md`）；调试国内源时可临时关 TUN。
+- **grok 经境外 api.x.ai 调用极慢**（单次 ~320s），完整分析十几次调用易 timeout；用户已知情，暂不处理（详见 memory）。
 - 自选股**只能通过网页 UI 添加**；用 PowerShell/curl 加中文名会被 ASCII 编码成 `?`（不可逆）。
 - 改任何 LLM key / provider 后**必须重启 Python API 服务**才生效。
 - `.bat` 必须纯 ASCII（中文搬 `.ps1`）——见全局 CLAUDE.md。
