@@ -47,15 +47,16 @@ D1 行情切片已完成（见下方已完成区）；继续后续 vendor 切片
 - 东财的真正价值在**衍生数据**（研报 / 资金流 / 龙虎榜 / 北向资金），**不是**基础行情 OHLCV
   （日线开高低收量是交易所统一数据，新浪=东财=baostock，已验证茅台 1272.86 两边一致）。
   → 将来真要做"资金流/龙虎榜"这类分析时，再攻克东财才划算。
-- TUN 环境下东财的障碍（实测，翻案时直接看这里）：
-  - `www.eastmoney.com` chrome120 直连 HTTP 200 → 指纹够用、eastmoney 直连规则生效
-  - 但 `push2his` API 子域名 chrome120/chrome110/chrome 全 `curl(56) Connection closed`
-  - 结论：**指纹不是瓶颈，push2his 子域名被 Clash 路由到代理(台湾)被东财拒才是**。
-    故 TradingAgents-CN 的 curl_cffi(chrome120) 方案（它直连大陆有效）搬到本 TUN 环境无效。
-- 翻案攻克路径：① Clash 让 push2his 真直连（清 fake-ip 缓存 / DNS 段加 `fake-ip-filter: eastmoney.com`
-  / 查 rules 顺序确认 DIRECT 在代理规则前）→ 用 www 同款直连验证 push2his 走大陆
-  ② 复刻 TradingAgents-CN 的 monkeypatch（`providers/china/akshare.py:43-150`，eastmoney URL 走
-  `curl_cffi.get(impersonate="chrome120")`）③ 把东财源加进 fallback 链作可选。
+- TUN 环境下东财障碍的实测结论（2026-06-07 多轮验证，翻案时直接看这里）：
+  - `www.eastmoney.com`(首页)、`stock_news_em`(新闻 API) 在 TUN 下**可访问** → 东财非全站封锁、非 IP 封
+  - 但 `push2his`(行情 API) chrome120/chrome110/chrome 全 `curl(56) Connection closed`
+  - **已排除三种解释**：① 非 IP 暂封——隔数小时低频复测仍 curl(56)，若封 IP 早解封 ② 非指纹——chrome120
+    也 56 ③ 非整站/路由——所有东财域名 DNS 均 fake-ip(198.18.x) 走 Clash，但其它东财接口照样通
+  - **结论：是 `push2his` 行情接口本身的针对性反爬（拒爬虫请求），与 IP/指纹/TUN 路由无关**；
+    东财新闻接口(stock_news_em)反爬松、可用。故"行情走新浪 + 新闻走 stock_news_em"正确绕开了 push2his。
+- 翻案攻克路径（若将来要东财行情）：① 研究 push2his 反爬绕过（需要的 cookie/秘钥参数/频率控制，
+  参考 akshare 内部或抓包真实浏览器请求）② 或直接用东财别的行情接口(如 stock_zh_a_hist 的不同 endpoint)
+  ③ 但鉴于新浪行情已稳、数据同源同质，东财行情价值低，优先做东财**衍生数据**(研报/资金流/龙虎榜)才划算。
 
 ## 🟢 已完成
 
