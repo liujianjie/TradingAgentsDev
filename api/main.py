@@ -2,6 +2,23 @@ from .config_loader import load_apikeys
 
 load_apikeys()
 
+# yfinance 1.x 默认用 curl_cffi(impersonate="chrome") 发请求。
+# Chrome TLS 指纹 (JA3/JA4) 对韩国、部分亚洲 Yahoo Finance 端点握手失败
+# (curl error 35, OPENSSL_internal:invalid library)。
+# 告知 yfinance curl_cffi 不可用 → new_session() 走 requests 分支，绕过此问题。
+try:
+    import requests as _req
+    import yfinance._http as _yf_http
+    import yfinance.data as _yf_data
+
+    _yf_http.HAS_CURL_CFFI = False   # new_session() 检查这个变量
+    _yf_http._backend = _req
+    _yf_http.requests = _req
+    _yf_data.YfData._instances.clear()
+    print("[yfinance] requests backend active (curl_cffi TLS bypassed)")
+except Exception as _patch_err:
+    print(f"[yfinance] patch skipped: {_patch_err}")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime

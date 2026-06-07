@@ -94,7 +94,9 @@ def _fetch_subreddit_rss(
     try:
         with urlopen(req, timeout=timeout) as resp:
             root = ET.fromstring(resp.read())
-    except (HTTPError, URLError, TimeoutError, ET.ParseError) as exc:
+    except Exception as exc:
+        # 全兜底：含 GFW 干扰境外 reddit.com 时漏网的 ssl.SSLError /
+        # ConnectionResetError（OSError 子类，urllib 不一定包成 URLError）。
         logger.warning("Reddit RSS fetch failed for r/%s · %s: %s", sub, ticker, exc)
         return []
 
@@ -129,7 +131,8 @@ def _fetch_subreddit(
             payload = json.loads(resp.read())
         children = (payload.get("data") or {}).get("children") or []
         return [c.get("data", {}) for c in children if isinstance(c, dict)]
-    except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
+    except Exception as exc:
+        # 全兜底后仍走 RSS fallback（reddit JSON 端点在国内常 403/被墙）。
         logger.warning(
             "Reddit JSON fetch failed for r/%s · %s: %s — falling back to RSS feed.",
             sub, ticker, exc,

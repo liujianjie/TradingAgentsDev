@@ -40,6 +40,13 @@
       </view>
     </view>
 
+    <!-- 报告保存路径提示 -->
+    <view v-if="status === 'completed' && result?.reportPath" class="card save-hint">
+      <text class="save-icon">💾</text>
+      <text class="save-label">报告已保存至</text>
+      <text class="save-path" selectable="true">{{ result.reportPath }}</text>
+    </view>
+
     <view class="actions" v-if="status === 'completed' || status === 'failed'">
       <button class="btn-ghost actbtn" @click="goBack">返回</button>
     </view>
@@ -231,6 +238,23 @@ function goBack() {
   font-size: 27rpx;
   color: $text-2;
   line-height: 1.7;
+}
+
+/* 报告保存提示 */
+.save-hint {
+  margin: 0 24rpx 20rpx;
+  padding: 24rpx 28rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+.save-icon { font-size: 32rpx; }
+.save-label { font-size: 24rpx; color: $text-3; }
+.save-path {
+  font-size: 22rpx;
+  color: $primary;
+  word-break: break-all;
+  line-height: 1.5;
 }
 
 /* 操作 */

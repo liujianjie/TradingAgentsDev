@@ -9,6 +9,7 @@ public class AnalysisResult
     public string? FundamentalsReport { get; set; }
     public string? InvestmentPlan { get; set; }
     public string? FinalTradeDecision { get; set; }
+    public string? ReportPath { get; set; }
 }
 
 public class AnalysisJob

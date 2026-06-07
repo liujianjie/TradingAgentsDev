@@ -40,7 +40,11 @@ def fetch_stocktwits_messages(ticker: str, limit: int = 30, timeout: float = 10.
     try:
         with urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
-    except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
+    except Exception as exc:
+        # 全兜底：本函数契约是"永远返回字符串、绝不抛"。除 HTTPError/URLError/
+        # TimeoutError 外，中国大陆经 GFW 访问境外站点时 TLS 握手被重置会抛
+        # ssl.SSLError / ConnectionResetError——这些 OSError 子类 urllib 不一定
+        # 包装成 URLError，若漏网就会冒泡杀死整个情感分析节点（表现为 timeout）。
         logger.warning("StockTwits fetch failed for %s: %s", ticker, exc)
         return f"<stocktwits unavailable: {type(exc).__name__}>"
 

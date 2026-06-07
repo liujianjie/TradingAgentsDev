@@ -14,13 +14,26 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalysisOrchestrator> _logger;
+    private readonly string _reportsDir;
 
     public AnalysisOrchestrator(
         IServiceScopeFactory scopeFactory,
-        ILogger<AnalysisOrchestrator> logger)
+        ILogger<AnalysisOrchestrator> logger,
+        IHostEnvironment env)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _reportsDir = Path.GetFullPath(Path.Combine(env.ContentRootPath, "../../reports"));
+    }
+
+    private async Task<string> SaveReportAsync(string ticker, string? date, string jobId, string markdown)
+    {
+        Directory.CreateDirectory(_reportsDir);
+        var safeDate = (date ?? DateTime.UtcNow.ToString("yyyy-MM-dd")).Replace("/", "-");
+        var fileName = $"{ticker}_{safeDate}_{jobId[..8]}.md";
+        var path = Path.Combine(_reportsDir, fileName);
+        await File.WriteAllTextAsync(path, markdown, System.Text.Encoding.UTF8);
+        return path;
     }
 
     public async Task<string> TriggerAndPushAsync(string ticker, string date, CancellationToken ct = default)
@@ -97,6 +110,9 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                 var job = await analysis.WaitForCompletionAsync(jobIdForBg, CancellationToken.None);
                 var (title, markdown) = ReportFormatter.Format(tickerForBg, job);
 
+                if (job.Result != null && job.Status == "completed")
+                    job.Result.ReportPath = await SaveReportAsync(tickerForBg, job.Date, jobIdForBg, markdown);
+
                 var record = await db.AnalysisRecords.FindAsync(jobIdForBg);
                 if (record != null)
                 {
@@ -159,6 +175,10 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                 {
                     var job = await analysis.WaitForCompletionAsync(jobId, CancellationToken.None);
                     var (title, markdown) = ReportFormatter.Format(ticker, job);
+
+                    if (job.Result != null && job.Status == "completed")
+                        job.Result.ReportPath = await SaveReportAsync(ticker, job.Date, jobId, markdown);
+
                     var r = await dbInner.AnalysisRecords.FindAsync(jobId);
                     if (r != null)
                     {

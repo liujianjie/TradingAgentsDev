@@ -22,6 +22,7 @@ def create_news_analyst(llm):
 
         system_message = (
             f"You are a news researcher tasked with analyzing recent news and trends over the past week. Please write a comprehensive report of the current state of the world that is relevant for trading and macroeconomics. Use the available tools: get_news(query, start_date, end_date) for {asset_label}-specific or targeted news searches, and get_global_news(curr_date, look_back_days, limit) for broader macroeconomic news. Provide specific, actionable insights with supporting evidence to help traders make informed decisions."
+            + f" CRITICAL — do not fabricate relevance: if get_news returns no {asset_label}-specific results, state plainly that there is no recent coverage for this instrument and treat that as a genuine finding. Only tie a macro headline to this instrument when there is a clear, evidenced sector or supply-chain link backed by what you actually know about the instrument. If you do not know the instrument's sector, or the link is speculative, present macro items strictly as general market backdrop and explicitly flag the instrument-specific news gap — never invent a causal chain (e.g. do not claim consumer/footwear/commodity headlines affect an instrument whose business you cannot identify)."
             + """ Make sure to append a Markdown table at the end of the report to organize key points in the report, organized and easy to read."""
             + get_language_instruction()
         )

@@ -58,7 +58,7 @@
 "active_provider": "openai"   ← 改成你想用的
 ```
 
-支持的值：`openai` / `deepseek` / `google` / `anthropic` / `qwen-cn`
+支持的值：`openai` / `deepseek` / `google` / `anthropic` / `qwen-cn` / `xai`
 
 #### c. Server酱 SendKey
 
@@ -129,6 +129,114 @@ apikeys 配置文件路径: F:\AIProject\TradingAgents\config\apikeys.local.json
 ```
 
 下次想换：直接改 `active_provider` 为 `"deepseek"` → 重启服务 → 生效。
+
+## 切换到 Google Gemini（实测本机可直连，无需代理）
+
+> 适用：DeepSeek/OpenAI key 失效，改用 Gemini。**纯配置，不用改任何代码。**
+
+### 1. 拿 Gemini key
+
+到 **[https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)**（Google AI Studio）→ 用 Google 账号登录 → 「Create API key」→ 点那一行的「Copy」复制。
+- *为什么是这个网站*：Gemini 的 API key 在 AI Studio 申请，不是 Google Cloud 控制台。免费层有每日额度，个人用足够起步。
+- **⚠️ 认准 key 格式**：正确的是 **`AIza` 开头、共 39 位、只含字母数字 `_-`**。
+  如果你复制到的是 `AQ.A...` 开头或几十位带 `.` 的长串，那是 OAuth/临时凭据**不是 API key**，会报 `401 Expected OAuth 2 access token`。复制错行了，回页面找 `AIza` 那一行。
+
+### 2. 改 `config/apikeys.local.json` 三处
+
+```jsonc
+"active_provider": "google",              // ← 从 deepseek 改成 google
+"providers": {
+  "google": {
+    "api_key": "<粘贴你的 Gemini key>",    // ← 填上
+    "deep_think_model": "gemini-2.5-pro",  // ← 深度推理/多空辩论用 pro
+    "quick_think_model": "gemini-2.5-flash", // ← 快思考用 flash，省钱
+    "base_url": null
+  }
+}
+```
+- *为什么改模型名*：原来填的 `gemini-2.0-flash` 已不在代码推荐列表，建议用当前稳定的 `gemini-2.5-*`。想最省钱：deep/quick 都填 `gemini-2.5-flash`。
+- *base_url 保持 null*：代码会自动用 Google 官方端点。本机已实测可直连（HTTP 403=连通，仅因没带 key），**不用挂代理**。
+
+### 3. 让新 key 生效（关键）
+
+Python 服务**只在启动时读一次** key 文件，改完必须让它重新加载。两种方式：
+- **若用 `--reload` 启动**：热重载只盯 `.py`，改 `.json` 不触发 → 随便存一下任意 `.py`（如 `api/main.py`）即可触发重载。
+- **否则**：关掉 uvicorn 窗口重启（见上文「步骤 3」）。
+
+### 4. 验证（强烈建议，省得白跑一次完整分析）
+
+启动日志应出现：`[apikeys] loaded provider=google deep=gemini-2.5-pro`。
+想更稳，跑一个零成本鉴权探测（不消耗 token）：
+```powershell
+python -c "import json,urllib.request as u; k=json.load(open('config/apikeys.local.json',encoding='utf-8'))['providers']['google']['api_key']; print(u.urlopen(f'https://generativelanguage.googleapis.com/v1beta/models?key={k}',timeout=15).status)"
+```
+打印 `200` = key 有效，可以放心分析。`403/400` = key 不对，回到第 1 步。
+
+### 常见卡点（Gemini）
+
+| 现象 | 原因 / 排查 |
+|------|------|
+| 日志仍是 `provider=deepseek` | `active_provider` 没改成 `google`，或没重载 |
+| 探测返回 400/403 | key 复制错/有空格，或 AI Studio 里这把 key 被删了 |
+| 分析超时但不是 401 | 极少数网络波动；本机实测可直连，重试即可 |
+
+---
+
+## 切换到 xAI Grok
+
+> 适用：已有 xAI API Key，想用 Grok 系列模型。**纯配置，不用改任何代码。**
+
+### 1. 拿 xAI API Key
+
+到 **[https://console.x.ai](https://console.x.ai)** → 用 X 账号登录 → 「API Keys」→「Create API Key」→ 复制。
+- *为什么*：xAI 的 key 只在这里申请，没有其他入口。
+- key 格式：`xai-` 开头的字符串。
+- 注意：key 只在创建时显示一次，必须立刻复制保存。
+
+### 2. 改 `config/apikeys.local.json` 两处
+
+```jsonc
+"active_provider": "xai",                        // ← 改成 xai
+"providers": {
+  "xai": {
+    "api_key": "<粘贴你的 xAI key>",              // ← 填上，替换尖括号
+    "deep_think_model": "grok-4.3",               // 深度推理 / 多空辩论
+    "quick_think_model": "grok-4-fast-non-reasoning", // 快速判断，省钱
+    "base_url": null                              // null 用官方端点
+  }
+}
+```
+
+**可选模型**：
+
+| 场景 | 推荐型号 |
+|------|---------|
+| 深度分析（deep_think） | `grok-4.3`（旗舰，1M ctx，内建推理）|
+| 快速判断（quick_think） | `grok-4-fast-non-reasoning`（速度最快）|
+| 代码任务 | `grok-build-0.1`（256K ctx，代码专项）|
+| 推理（省 quota） | `grok-4-fast-reasoning` |
+
+### 3. 重启服务让配置生效
+
+同上文「步骤 3」。
+
+### 4. 验证
+
+启动日志应出现：
+```
+[apikeys] loaded provider=xai deep=grok-4.3
+```
+
+### 常见卡点（xAI Grok）
+
+| 现象 | 原因 / 排查 |
+|------|------|
+| 日志仍是 `provider=deepseek` | `active_provider` 没改，或 JSON 格式有误（多/少逗号） |
+| `AuthenticationError` | key 填错，或 key 创建时没复制完整（`xai-` 开头） |
+| `model not found` | 模型名拼写错误，改回 `grok-4.3` |
+| 分析超时 | xAI API 暂时波动，稍后重试 |
+
+---
 
 ## 安全注意
 

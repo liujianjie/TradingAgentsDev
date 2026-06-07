@@ -23,6 +23,11 @@ from .alpha_vantage import (
     get_global_news as get_alpha_vantage_global_news,
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
+from .akshare_utils import (
+    get_akshare_stock_data,
+    AkshareUnavailableError,
+    market_of,
+)
 
 # Configuration and routing logic
 from .config import get_config
@@ -63,6 +68,7 @@ TOOLS_CATEGORIES = {
 VENDOR_LIST = [
     "yfinance",
     "alpha_vantage",
+    "akshare",
 ]
 
 # Mapping of methods to their vendor-specific implementations
@@ -71,6 +77,7 @@ VENDOR_METHODS = {
     "get_stock_data": {
         "alpha_vantage": get_alpha_vantage_stock,
         "yfinance": get_YFin_data_online,
+        "akshare": get_akshare_stock_data,
     },
     # technical_indicators
     "get_indicators": {
@@ -131,11 +138,43 @@ def get_vendor(category: str, method: str = None) -> str:
     # Fall back to category-level configuration
     return config.get("data_vendors", {}).get(category, "default")
 
+# 各市场的默认 vendor 优先链（config 未显式指定时按 ticker 市场自动选）。
+# akshare 对某 method 无实现时，route_to_vendor 会自动跳到链中下一个，故这里
+# 统一写 akshare 优先即可——尚未实现的方法天然落到 yfinance。
+_MARKET_VENDOR_CHAIN = {
+    "cn_a":  ["akshare", "yfinance"],
+    "hk":    ["akshare", "yfinance"],
+    "other": ["yfinance", "alpha_vantage"],
+}
+
+
+def _auto_vendor_chain(method: str, args: tuple) -> list:
+    """按 ticker 市场返回默认 vendor 优先链。
+
+    get_global_news 是全市场宏观新闻，akshare 无此能力，恒走 yfinance/AV（且其
+    args[0] 是日期而非 ticker，不该参与市场判断）。其余方法 args[0] 即 ticker。
+    """
+    if method == "get_global_news":
+        return ["yfinance", "alpha_vantage"]
+    ticker = str(args[0]) if args else ""
+    return _MARKET_VENDOR_CHAIN.get(market_of(ticker), _MARKET_VENDOR_CHAIN["other"])
+
+
 def route_to_vendor(method: str, *args, **kwargs):
-    """Route method calls to appropriate vendor implementation with fallback support."""
+    """Route method calls to appropriate vendor implementation with fallback support.
+
+    Vendor 选择：config 显式指定（如 UI 强制某源）优先；否则按 ticker 市场自动选
+    （A股/港股→akshare 优先，美股/其他→yfinance 优先）。akshare 不可用或 AV 限流时
+    自动 fallback 到链中下一个 vendor。
+    """
     category = get_category_for_method(method)
     vendor_config = get_vendor(category, method)
-    primary_vendors = [v.strip() for v in vendor_config.split(',')]
+
+    # config 为空 / "auto" / "default" → 按市场自动；否则用 config 显式指定的 vendor
+    if not vendor_config or vendor_config in ("auto", "default"):
+        primary_vendors = _auto_vendor_chain(method, args)
+    else:
+        primary_vendors = [v.strip() for v in vendor_config.split(',')]
 
     if method not in VENDOR_METHODS:
         raise ValueError(f"Method '{method}' not supported")
@@ -156,7 +195,7 @@ def route_to_vendor(method: str, *args, **kwargs):
 
         try:
             return impl_func(*args, **kwargs)
-        except AlphaVantageRateLimitError:
-            continue  # Only rate limits trigger fallback
+        except (AlphaVantageRateLimitError, AkshareUnavailableError):
+            continue  # 限流 / akshare 不可用 → fallback 到链中下一个 vendor
 
     raise RuntimeError(f"No available vendor for '{method}'")

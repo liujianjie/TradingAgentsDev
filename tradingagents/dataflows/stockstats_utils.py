@@ -14,11 +14,16 @@ logger = logging.getLogger(__name__)
 
 
 def yf_retry(func, max_retries=3, base_delay=2.0):
-    """Execute a yfinance call with exponential backoff on rate limits.
+    """Execute a yfinance call with retry on rate limits and transient network errors.
 
-    yfinance raises YFRateLimitError on HTTP 429 responses but does not
-    retry them internally. This wrapper adds retry logic specifically
-    for rate limits. Other exceptions propagate immediately.
+    Retries on:
+    - YFRateLimitError (HTTP 429) — yfinance does not retry these internally.
+    - Transient network failures (read timeout, connection reset/refused). These
+      are typically intermittent; accessing Yahoo Finance from mainland China
+      often hits sporadic timeouts that succeed on a retry.
+
+    Non-transient errors propagate. TLS handshake failures (common for Korean
+    .KS/.KQ tickers under curl_cffi) are re-wrapped with an actionable message.
     """
     for attempt in range(max_retries + 1):
         try:
@@ -30,6 +35,32 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
                 time.sleep(delay)
             else:
                 raise
+        except Exception as e:
+            err_str = str(e)
+            low = err_str.lower()
+
+            # 暂时性网络故障：超时 / 连接被重置或拒绝。重试通常能成功——
+            # 中国大陆访问 Yahoo Finance 偶发超时（"request time out"）是典型场景。
+            is_transient = (
+                "timed out" in low or "timeout" in low
+                or "connection aborted" in low or "connection reset" in low
+                or "connection refused" in low or "max retries exceeded" in low
+                or "curl: (28)" in err_str  # curl operation timeout
+            )
+            if is_transient and attempt < max_retries:
+                delay = base_delay * (2 ** attempt)
+                logger.warning(f"Yahoo Finance 网络超时，{delay:.0f}s 后重试 (尝试 {attempt + 1}/{max_retries}): {err_str[:80]}")
+                time.sleep(delay)
+                continue
+
+            # curl_cffi TLS 握手失败（常见于韩国 .KS/.KQ 等非美市场）
+            # 转成清晰的错误信息而非原始 curl 错误码
+            if "curl: (35)" in err_str or "TLS connect error" in err_str or "OPENSSL_internal" in err_str:
+                raise RuntimeError(
+                    f"TLS fetch failed for non-US market ticker — try restarting the server "
+                    f"so the requests backend takes effect. Original: {err_str[:200]}"
+                ) from e
+            raise
 
 
 def _ensure_date_column(data: pd.DataFrame) -> pd.DataFrame:
