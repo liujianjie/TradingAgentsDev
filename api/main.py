@@ -25,6 +25,7 @@ from datetime import datetime
 
 from .models import AnalyzeRequest
 from .analyzer import queue_analysis, get_job, list_jobs
+from .serenity import router as serenity_router
 
 app = FastAPI(title="TradingAgents API", version="1.0")
 
@@ -70,3 +71,6 @@ def get_job_status(job_id: str):
 @app.get("/api/v1/jobs")
 def list_all_jobs():
     return {"jobs": list_jobs()}
+
+
+app.include_router(serenity_router)
