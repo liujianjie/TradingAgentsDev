@@ -176,11 +176,11 @@ def main() -> int:
                 req, progress_cb=progress_cb, trace_cb=trace_cb
             )
         except SerenityWorkflowError as e:
-            print(f"❌ {label} 失败（workflow）: {e}")
+            print(f"[FAIL] {label} 失败（workflow）: {e}")
             summary.append({"label": label, "status": "failed", "error": str(e)})
             continue
         except Exception as e:
-            print(f"❌ {label} 意外: {type(e).__name__}: {e}")
+            print(f"[FAIL] {label} 意外: {type(e).__name__}: {e}")
             summary.append(
                 {
                     "label": label,
@@ -206,13 +206,13 @@ def main() -> int:
             "top_priorities": len(report.top_priorities),
         }
         if failed:
-            print(f"⚠ {label} 验收未过:")
+            print(f"[WARN] {label} 验收未过:")
             for f in failed:
                 print(f"  - {f}")
             case_summary["status"] = "acceptance_failed"
             case_summary["issues"] = failed
         else:
-            print(f"✓ {label} 验收通过")
+            print(f"[OK] {label} 验收通过")
             case_summary["status"] = "passed"
         summary.append(case_summary)
 
