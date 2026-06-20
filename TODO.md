@@ -6,6 +6,28 @@
 
 ## 🟡 进行中 / 下一步
 
+### Serenity 产业链卡点研究（spec: `docs/spec-serenity-research.md`）
+
+独立模块，不接入多代理交易分析图；后端 `tradingagents/serenity/` + 独立 endpoint
+`/api/v1/serenity/*`；前端独立 Tab "产业链研究"。10 个 commit 已落，56 单测全过。
+
+- [x] **T1-T6 · 后端全栈 + 单测** ✅ 2026-06-20
+  - 实现: schemas / prompts / 6 个 tool / workflow / API endpoint，56 case 全过
+  - Files: `tradingagents/serenity/*`、`api/serenity.py`、`tests/test_serenity_*.py`
+
+- [x] **T7-T8 · 前端 UniApp 提交页 + 报告页** ✅ 2026-06-20
+  - 实现: 三 mode 切换 + 三市场 + 9 步进度条 + 报告分块渲染 + 证据点击
+  - Files: `uniapp-frontend/src/pages/serenity/{index,report}.vue`
+
+- [x] **T9 · e2e probe 脚本就绪** ✅ 2026-06-20
+  - Files: `scripts/probe_serenity_e2e.py`
+  - **Acceptance 待用户授权真跑**：A 股 AI 半导体 + 美股 AI 算力，验收 top_priorities ≥3 / evidence ≥2 含 ≥1 primary。
+  - Verify: `python scripts/probe_serenity_e2e.py`；预算 ~400K tokens。
+
+- [ ] **T11 · v1.1 港股纳入 + 历史持久化** (待开)
+  - 港股 HKEX filings tool + 港股 market hint 已就位但 spec §3 v1 排除。
+  - in-memory `_jobs` → SQLite / 文件持久化，重启不丢历史。
+
 ### S（Sentiment）情感面 / 新闻面 / 特色数据三阶段强化（spec: `docs/spec-sentiment-multi-source.md`）
 背景：A股/港股 sentiment_analyst 之前对 StockTwits/Reddit 直接降级"无数据"；用 akshare 东财量化情感指标
 + 热度时序 + Google News 替代，把"情感面缺失"补齐。参考项目 TradingAgents-CN 的 A股情感是空壳 TODO，
