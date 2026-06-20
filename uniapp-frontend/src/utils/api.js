@@ -12,6 +12,10 @@ const BASE_URL =
   + 'http://localhost:28200'
   // #endif
 
+// Serenity 独立模块直连 Python FastAPI（C# appsettings.PythonApi.BaseUrl 同口径），
+// 不走 C# proxy 层；后端 CORS allow_origins=["*"]。
+const SERENITY_BASE_URL = 'http://localhost:28100'
+
 function request({ url, method = 'GET', data, header }) {
   return new Promise((resolve, reject) => {
     uni.request({
@@ -20,6 +24,26 @@ function request({ url, method = 'GET', data, header }) {
       data,
       header: { 'Content-Type': 'application/json', ...(header || {}) },
       timeout: 30000,
+      success: (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(res.data)
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${JSON.stringify(res.data)}`))
+        }
+      },
+      fail: (err) => reject(err),
+    })
+  })
+}
+
+function serenityRequest({ url, method = 'GET', data, header }) {
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: SERENITY_BASE_URL + url,
+      method,
+      data,
+      header: { 'Content-Type': 'application/json', ...(header || {}) },
+      timeout: 60000,
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data)
@@ -57,4 +81,14 @@ export const api = {
   updateSettings: (data) =>
     request({ url: '/api/settings', method: 'POST', data }),
   getProviders: () => request({ url: '/api/settings/providers' }),
+}
+
+// Serenity 产业链卡点研究（独立模块，详见 docs/spec-serenity-research.md）
+export const serenityApi = {
+  health: () => serenityRequest({ url: '/api/v1/serenity/health' }),
+  scan: (payload) =>
+    serenityRequest({ url: '/api/v1/serenity/scan', method: 'POST', data: payload }),
+  getJob: (jobId) =>
+    serenityRequest({ url: `/api/v1/serenity/jobs/${jobId}` }),
+  listJobs: () => serenityRequest({ url: '/api/v1/serenity/jobs' }),
 }
