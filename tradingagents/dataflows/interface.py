@@ -38,6 +38,7 @@ from .akshare_utils import (
     AkshareUnavailableError,
     market_of,
 )
+from .google_news import get_google_news
 
 # Configuration and routing logic
 from .config import get_config
@@ -119,6 +120,7 @@ VENDOR_METHODS = {
     # news_data
     "get_news": {
         "akshare": get_akshare_news,
+        "google_news": get_google_news,
         "alpha_vantage": get_alpha_vantage_news,
         "yfinance": get_news_yfinance,
     },
@@ -157,9 +159,12 @@ def get_vendor(category: str, method: str = None) -> str:
 # 各市场的默认 vendor 优先链（config 未显式指定时按 ticker 市场自动选）。
 # akshare 对某 method 无实现时，route_to_vendor 会自动跳到链中下一个，故这里
 # 统一写 akshare 优先即可——尚未实现的方法天然落到 yfinance。
+# google_news 仅在 ``get_news`` 上有实现，A 股/港股链上作为 akshare 与 yfinance 之间的
+# "外部视角"中间档（akshare 失败 → 试 Google News RSS → 最后 yfinance）；对其他方法
+# 它不在 VENDOR_METHODS 中故 route 自动跳过，链中存在但不实际生效，无副作用。
 _MARKET_VENDOR_CHAIN = {
-    "cn_a":  ["akshare", "yfinance"],
-    "hk":    ["akshare", "yfinance"],
+    "cn_a":  ["akshare", "google_news", "yfinance"],
+    "hk":    ["akshare", "google_news", "yfinance"],
     "other": ["yfinance", "alpha_vantage"],
 }
 

@@ -6,6 +6,67 @@
 
 ## 🟡 进行中 / 下一步
 
+### S（Sentiment）情感面 / 新闻面 / 特色数据三阶段强化（spec: `docs/spec-sentiment-multi-source.md`）
+背景：A股/港股 sentiment_analyst 之前对 StockTwits/Reddit 直接降级"无数据"；用 akshare 东财量化情感指标
++ 热度时序 + Google News 替代，把"情感面缺失"补齐。参考项目 TradingAgents-CN 的 A股情感是空壳 TODO，
+不抄。源已 probe 实证（`reports/sentiment_probe/20260619_235021/report.md`）。**美股链路不变**。
+不接：小红书 / 抖音（强反爬+法律风险）；雪球 / 富途留接口位不实施（Phase 2 再说）；tushare（PLAN 已否决）。
+
+- [x] **S1-1 · 中文情感聚合器（千股千评 + 热度 + 关键词 + 港股热度）** ✅ 2026-06-20
+  - 实现: `dataflows/chinese_sentiment.py` 4 fetcher（千股千评/热度时序/热门关键词/港股热度），
+    每个失败返回 None graceful-degrade；千股千评全市场表（5184 行）5 分钟模块级 TTL cache；
+    防 look-ahead（按交易日/时间过滤 <= curr_date）；ticker → 东财 SH/SZ/5位前缀格式。
+  - Verify: 15 unit test + 2 integration test 通过；茅台真实网络 ~10s 首调 / cache 后 <0.1s。
+  - Files: `tradingagents/dataflows/chinese_sentiment.py`、`tests/test_chinese_sentiment.py`
+
+- [x] **S1-2/3 · sentiment_analyst 按市场分流 + CN/HK prompt 模板 + 溯源** ✅ 2026-06-20
+  - 实现: `market_of(ticker)` 三路分流（US 保留 News+StockTwits+Reddit / A股 News+千股千评+
+    热度时序+所属概念热度 / HK News+港股热度时序）；CN 模板突出"千股千评是结构化情感雷达，
+    无需 LLM 二次打分"分析方法；fetcher 返回 None → 注入 `<unavailable: ...>` 占位串到 prompt
+    并 record_provenance 走降级条目；`SentimentReport` schema 不变。
+  - Verify: 8 routing test 全过；US/CN/HK 三路 prompt 各自包含市场专属数据块标签（如
+    `<start_of_em_comment>` / `<start_of_hk_hot_trend>`），不混入其它市场标签；
+    全项目 290 回归 test 通过（2 个 pre-existing failure 与本改动无关）。
+  - Files: `tradingagents/agents/analysts/sentiment_analyst.py`、`tests/test_sentiment_market_routing.py`
+
+- [x] **S2 · 新闻面强化（Google News 兜底）** ✅ 2026-06-20
+  - 实现: `dataflows/google_news.py` RSS 搜索（按 ticker 市场自动调 hl/gl/query：A 股 zh-CN，
+    港股 zh-HK 中英双搜，美股 en-US），防 look-ahead 按 pubDate 严格过滤 ≤ end_date；
+    `interface.py` VENDOR_METHODS["get_news"] 加 google_news；`_MARKET_VENDOR_CHAIN` A 股/港股
+    链改成 `["akshare", "google_news", "yfinance"]`。美股链不变。失败抛 GoogleNewsUnavailableError
+    自动 fallback 到下一个 vendor。
+  - Verify: 13 unit test（含 query 参数 / happy path / HTTP 错 / 网络错 / 空 RSS / look-ahead /
+    route_to_vendor 集成 3 场景）通过。test_route_us_path_unchanged_no_google_news_call 确认
+    美股链不被破坏。
+  - Files: `tradingagents/dataflows/google_news.py`、`tradingagents/dataflows/interface.py`、
+    `tests/test_google_news.py`
+
+- [x] **S-E2E · 新闻面端到端业务回归 + 兜底协议** ✅ 2026-06-20
+  - 实现: `scripts/verify_news_e2e.py` 模拟真实 API 路径（vendor=auto），覆盖正常路径
+    11 ticker（A股×4 / 港股×4 / 美股×3）、兜底路径 4 ticker（akshare 强制失败验证 google_news
+    救场）、极端路径 1（全链失败验证抛 RuntimeError + 溯源完整）。spec 补 § 5.5 四层处理协议
+    （L1 主源 / L2 google_news / L3 末位 / L4 全空时透明降级+`<unavailable>`+ confidence=low
+    +禁编造）。
+  - Verify: 11/11 正常路径 [OK] + 4/4 兜底路径 [OK] + 1/1 极端路径 [OK]，**总失败 0**。
+    A股/港股全部命中 akshare 主源（耗时 ~1.2s）、美股全部命中 yfinance、akshare 失败时
+    google_news 100% 救场（耗时 ~2-5s）。
+  - Files: `scripts/verify_news_e2e.py`、`docs/spec-sentiment-multi-source.md` § 5.4/5.5
+
+- [x] **S3 · A股特色数据（北向资金 / 龙虎榜）** ✅ 2026-06-20
+  - 实现: `dataflows/akshare_cn_features.py` 两 fetcher（`get_north_bound_holding` 走
+    `stock_hsgt_individual_em` 近 30 个交易日陆股通持仓时序 / `get_dragon_tiger_list` 走
+    `stock_lhb_stock_statistic_em` 全市场近一月统计按 ticker 抽行，5 分钟模块级 cache）；
+    `agents/utils/cn_features_tools.py` LangChain @tool wrapper（非 A 股返回 n/a 占位串
+    不抛栈，让 LLM 自然跳过）；`fundamentals_analyst.py` tools 列表追加两 tool +
+    prompt 段说明"A 股 ticker 必调，HK/US 安全跳过"。决策放在 fundamentals_analyst（避免新增
+    event_analyst 引入 graph 复杂度，spec § 3.6 已决）。
+  - Verify: 12 unit test（含 mock akshare 形态 / 失败 graceful / 防 look-ahead / cache 摊销 /
+    fundamentals_analyst.bind_tools 注册验证）+ 2 integration test（茅台北向 / 龙虎榜真实网络）
+    通过。
+  - Files: `tradingagents/dataflows/akshare_cn_features.py`、
+    `tradingagents/agents/utils/cn_features_tools.py`、
+    `tradingagents/agents/analysts/fundamentals_analyst.py`、`tests/test_cn_features.py`
+
 ### 数据源按市场路由（详见 `PLAN.md`「数据源策略」）
 D1 核心切片均已完成：行情(下方已完成区) + **D1-2 技术指标 / D1-3 基本面 / D1-4 个股新闻**（见各项）。
 A股财务/行情/指标**走 akshare 新浪源**，港股财务走东财 em（非 push2his），**均不用东财行情接口**（反爬，见搁置项）。
