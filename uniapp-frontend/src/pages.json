@@ -41,6 +41,12 @@
       "style": {
         "navigationBarTitleText": "产业链研究"
       }
+    },
+    {
+      "path": "pages/serenity/report",
+      "style": {
+        "navigationBarTitleText": "研究报告"
+      }
     }
   ],
   "globalStyle": {
