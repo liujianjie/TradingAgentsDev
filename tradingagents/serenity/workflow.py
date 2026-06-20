@@ -49,6 +49,8 @@ _PROGRESS_STAGES = [
 ]
 
 
+# 9 步 × 平均 ~6 次 LLM→tool 往返 ≈ 60；留缓冲让 LLM 在证据不够时多搜几轮。
+# 调高代价：单次研究成本线性增加；调低风险：LLM 在第 7 步排序前被 cap 截断。
 _DEFAULT_RECURSION_LIMIT = 60
 
 

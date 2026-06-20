@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Annotated, Optional
 from urllib.parse import urlencode
@@ -36,7 +37,12 @@ _UA_BROWSER = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
-_UA_SEC = "serenity-skill/1.0 tradingagents@local"
+# SEC 官方要求 UA 含可联系邮箱（https://www.sec.gov/os/accessing-edgar-data）。
+# 优先从 env 取联系人；未配置时降级到 placeholder——可能被风控限流，部署前应 set SEC_UA_EMAIL。
+_UA_SEC = (
+    f"serenity-skill/1.0 "
+    f"(contact: {os.environ.get('SEC_UA_EMAIL', 'admin@example.local')})"
+)
 _TIMEOUT = 10
 
 
@@ -126,7 +132,8 @@ def get_filings_cn(
             None,
         )
         if sym_col:
-            df = df[df[sym_col].astype(str).str.contains(bare, na=False)]
+            # 精确匹配避免 "600519" 误命中 "1600519" / "600519X" 等同号段邻股
+            df = df[df[sym_col].astype(str) == bare]
 
         if keywords:
             title_col = next(

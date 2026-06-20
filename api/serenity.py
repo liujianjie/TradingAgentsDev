@@ -10,16 +10,13 @@ in-memory job 队列（与 ``analyzer._jobs`` 隔离），进程重启清空—�
 from __future__ import annotations
 
 import logging
-import os
-import sys
+import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict
 
 from fastapi import APIRouter, HTTPException
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from tradingagents.serenity.schemas import ResearchMode, ScanRequest
 from tradingagents.serenity.workflow import (
@@ -33,6 +30,7 @@ router = APIRouter(prefix="/api/v1/serenity", tags=["serenity"])
 
 _executor = ThreadPoolExecutor(max_workers=2)
 _jobs: Dict[str, dict] = {}
+_jobs_lock = threading.Lock()
 
 _TRACE_LOG_MAX_LINES = 200
 
@@ -42,9 +40,10 @@ def _now() -> str:
 
 
 def _update_job(job_id: str, **kwargs) -> None:
-    if job_id in _jobs:
-        _jobs[job_id].update(kwargs)
-        _jobs[job_id]["updated_at"] = _now()
+    with _jobs_lock:
+        if job_id in _jobs:
+            _jobs[job_id].update(kwargs)
+            _jobs[job_id]["updated_at"] = _now()
 
 
 def _make_progress_cb(job_id: str):
@@ -60,12 +59,13 @@ def _make_progress_cb(job_id: str):
 
 def _make_trace_cb(job_id: str):
     def cb(line: str) -> None:
-        if job_id not in _jobs:
-            return
-        log = _jobs[job_id].setdefault("trace_log", [])
-        log.append(line)
-        if len(log) > _TRACE_LOG_MAX_LINES:
-            del log[: len(log) - _TRACE_LOG_MAX_LINES]
+        with _jobs_lock:
+            if job_id not in _jobs:
+                return
+            log = _jobs[job_id].setdefault("trace_log", [])
+            log.append(line)
+            if len(log) > _TRACE_LOG_MAX_LINES:
+                del log[: len(log) - _TRACE_LOG_MAX_LINES]
 
     return cb
 
@@ -113,33 +113,36 @@ async def scan(request: ScanRequest) -> dict:
 
     job_id = f"ser-{uuid.uuid4().hex[:12]}"
     now = _now()
-    _jobs[job_id] = {
-        "job_id": job_id,
-        "status": "queued",
-        "progress": {"step": 0, "total": 9, "stage": "queued"},
-        "result": None,
-        "sources_consulted": 0,
-        "candidates_inspected": 0,
-        "trace_log": [],
-        "error": None,
-        "created_at": now,
-        "updated_at": now,
-        "request": request.model_dump(),
-    }
+    with _jobs_lock:
+        _jobs[job_id] = {
+            "job_id": job_id,
+            "status": "queued",
+            "progress": {"step": 0, "total": 9, "stage": "queued"},
+            "result": None,
+            "sources_consulted": 0,
+            "candidates_inspected": 0,
+            "trace_log": [],
+            "error": None,
+            "created_at": now,
+            "updated_at": now,
+            "request": request.model_dump(),
+        }
     _dispatch(job_id, request)
     return {"job_id": job_id, "status": "queued"}
 
 
 @router.get("/jobs/{job_id}")
 def get_job(job_id: str) -> dict:
-    job = _jobs.get(job_id)
-    if not job:
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+        snapshot = dict(job) if job else None
+    if not snapshot:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    return snapshot
 
 
 @router.get("/jobs")
 def list_jobs() -> dict:
-    return {
-        "jobs": sorted(_jobs.values(), key=lambda j: j["created_at"], reverse=True)
-    }
+    with _jobs_lock:
+        snapshots = [dict(j) for j in _jobs.values()]
+    return {"jobs": sorted(snapshots, key=lambda j: j["created_at"], reverse=True)}

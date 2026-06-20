@@ -161,13 +161,14 @@ def main() -> int:
         if args.label and args.label != label:
             continue
         print(f"\n==== {label} ====")
-        trace_lines: list[str] = []
+        # 每场景独立 trace 列表（不在循环外预声明，避免跨场景串扰）
+        case_traces: list[str] = []
 
         def progress_cb(step: int, stage: str) -> None:
             print(f"  step={step}/9 stage={stage}")
 
-        def trace_cb(line: str) -> None:
-            trace_lines.append(line)
+        def trace_cb(line: str, _store=case_traces) -> None:
+            _store.append(line)
             print(f"  trace: {line}")
 
         try:
