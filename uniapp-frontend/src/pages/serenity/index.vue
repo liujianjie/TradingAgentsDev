@@ -99,7 +99,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onShow } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { serenityApi } from '@/utils/api.js'
 
 const modes = [

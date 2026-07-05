@@ -96,11 +96,28 @@ using (var scope = app.Services.CreateScope())
             PreMarketTime TEXT NOT NULL,
             PostMarketEnabled INTEGER NOT NULL,
             PostMarketTime TEXT NOT NULL,
+            PushAutoSend INTEGER NOT NULL DEFAULT 0,
             LlmProvider TEXT NULL,
             DeepThinkLlm TEXT NULL,
             QuickThinkLlm TEXT NULL,
             UpdatedAt TEXT NOT NULL)";
         createSettings.ExecuteNonQuery();
+    }
+    // 存量库：补 PushAutoSend 列（默认 0 = 关，匹配新行为"不自动推"）
+    using (var pragma3 = conn.CreateCommand())
+    {
+        pragma3.CommandText = "PRAGMA table_info(UserSettings)";
+        using var reader3 = pragma3.ExecuteReader();
+        bool hasPushAutoSend = false;
+        while (reader3.Read())
+            if (reader3.GetString(1) == "PushAutoSend") { hasPushAutoSend = true; break; }
+        if (!hasPushAutoSend)
+        {
+            using var alter3 = conn.CreateCommand();
+            alter3.CommandText = "ALTER TABLE UserSettings ADD COLUMN PushAutoSend INTEGER NOT NULL DEFAULT 0";
+            alter3.ExecuteNonQuery();
+            app.Logger.LogInformation("DB migration: added PushAutoSend column to UserSettings (default 0=off)");
+        }
     }
     conn.Close();
 

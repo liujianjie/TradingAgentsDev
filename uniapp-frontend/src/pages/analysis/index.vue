@@ -48,6 +48,14 @@
     </view>
 
     <view class="actions" v-if="status === 'completed' || status === 'failed'">
+      <button
+        v-if="status === 'completed'"
+        class="btn-primary actbtn push-btn"
+        :disabled="pushing || pushed"
+        @click="handlePush"
+      >
+        {{ pushed ? '✓ 已推送' : (pushing ? '推送中...' : '📲 推送到手机') }}
+      </button>
       <button class="btn-ghost actbtn" @click="goBack">返回</button>
     </view>
   </view>
@@ -65,6 +73,8 @@ const status = ref('queued')
 const result = ref(null)
 const error = ref('')
 const startTime = ref(Date.now())
+const pushing = ref(false)
+const pushed = ref(false)
 
 let pollTimer = null
 let hintTimer = null
@@ -154,6 +164,24 @@ async function poll() {
     }
   } catch (e) {
     error.value = '查询任务失败：' + (e.message || e)
+  }
+}
+
+async function handlePush() {
+  if (pushing.value || pushed.value || !jobId.value) return
+  pushing.value = true
+  try {
+    const r = await api.pushAnalysis(jobId.value)
+    if (r?.success) {
+      pushed.value = true
+      uni.showToast({ title: '已推送到微信', icon: 'success' })
+    } else {
+      uni.showToast({ title: '推送失败：' + (r?.error || '未知错误').slice(0, 40), icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '推送失败：' + (e.message || e).slice(0, 50), icon: 'none' })
+  } finally {
+    pushing.value = false
   }
 }
 
@@ -260,6 +288,7 @@ function goBack() {
 }
 
 /* 操作 */
-.actions { margin: 32rpx 24rpx 0; }
+.actions { margin: 32rpx 24rpx 0; display: flex; flex-direction: column; gap: 16rpx; }
 .actbtn { width: 100%; padding: 22rpx; font-size: 30rpx; }
+.push-btn { /* 主推按钮，跟随主色 */ }
 </style>

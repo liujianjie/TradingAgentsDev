@@ -59,7 +59,7 @@ public static class ReportFormatter
     private static string Trim(string s, int max)
         => s.Length <= max ? s : s[..max] + "...(略)";
 
-    private static string BuildTitle(string ticker, string? decision)
+    public static string BuildTitle(string ticker, string? decision)
     {
         if (string.IsNullOrWhiteSpace(decision))
             return $"[TradingAgents] {ticker} 分析完成";

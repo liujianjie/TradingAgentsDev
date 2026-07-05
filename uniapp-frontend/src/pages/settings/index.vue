@@ -1,10 +1,24 @@
 <template>
   <view class="page">
     <view class="body">
+      <!-- 推送行为 -->
+      <view class="card sec">
+        <text class="card-title">📲 微信推送</text>
+        <text class="hint">默认关：分析完不自动推，在报告页点"推送到手机"按钮单次推。打开后成功/失败都自动推（含定时任务）。</text>
+
+        <view class="row">
+          <view class="row-left">
+            <switch :checked="pushAuto" color="#4f6ef7" @change="e => pushAuto = e.detail.value" />
+            <text class="row-label">自动推送</text>
+          </view>
+          <text class="row-right-hint">{{ pushAuto ? '已开启' : '已关闭' }}</text>
+        </view>
+      </view>
+
       <!-- 推送时间 -->
       <view class="card sec">
-        <text class="card-title">⏰ 推送时间</text>
-        <text class="hint">定时分析自选股并微信推送（仅工作日）。关掉某档则该时段不推送。</text>
+        <text class="card-title">⏰ 定时推送时间</text>
+        <text class="hint">定时分析自选股（仅工作日）。是否真推送由上方"自动推送"开关决定。</text>
 
         <view class="row">
           <view class="row-left">
@@ -78,6 +92,7 @@ const preEnabled = ref(true)
 const preTime = ref('08:30')
 const postEnabled = ref(true)
 const postTime = ref('15:10')
+const pushAuto = ref(false)
 
 const providers = ref([])              // [{ provider, deepThinkModel, quickThinkModel }]
 const provider = ref('')
@@ -105,6 +120,7 @@ async function load() {
       preTime.value = s.preMarketTime || '08:30'
       postEnabled.value = s.postMarketEnabled
       postTime.value = s.postMarketTime || '15:10'
+      pushAuto.value = !!s.pushAutoSend
       provider.value = s.llmProvider || ''
       deepThink.value = s.deepThinkLlm || ''
       quickThink.value = s.quickThinkLlm || ''
@@ -125,6 +141,7 @@ async function save() {
       preMarketTime: preTime.value,
       postMarketEnabled: postEnabled.value,
       postMarketTime: postTime.value,
+      pushAutoSend: pushAuto.value,
       llmProvider: provider.value || null,
       deepThinkLlm: deepThink.value || null,
       quickThinkLlm: quickThink.value || null,
@@ -156,6 +173,7 @@ onLoad(() => load())
 }
 .row-left { display: flex; align-items: center; gap: 16rpx; }
 .row-label { font-size: 28rpx; color: $text; font-weight: 600; }
+.row-right-hint { font-size: 26rpx; color: $text-3; }
 .time-box {
   background: $surface-2;
   border-radius: $radius-sm;

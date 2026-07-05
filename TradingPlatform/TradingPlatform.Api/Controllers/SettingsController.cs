@@ -57,6 +57,7 @@ public class SettingsController : ControllerBase
         s.PreMarketTime = dto.PreMarketTime;
         s.PostMarketEnabled = dto.PostMarketEnabled;
         s.PostMarketTime = dto.PostMarketTime;
+        s.PushAutoSend = dto.PushAutoSend;
         s.LlmProvider = NullIfBlank(dto.LlmProvider);
         s.DeepThinkLlm = NullIfBlank(dto.DeepThinkLlm);
         s.QuickThinkLlm = NullIfBlank(dto.QuickThinkLlm);
@@ -107,6 +108,7 @@ public class SettingsController : ControllerBase
                 PreMarketTime = s.PreMarketTime,
                 PostMarketEnabled = s.PostMarketEnabled,
                 PostMarketTime = s.PostMarketTime,
+                PushAutoSend = s.PushAutoSend,
                 LlmProvider = s.LlmProvider,
                 DeepThinkLlm = s.DeepThinkLlm,
                 QuickThinkLlm = s.QuickThinkLlm,

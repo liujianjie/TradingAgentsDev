@@ -43,13 +43,15 @@ public class AnalyzeRequest
     public string? QuickThinkLlm { get; set; }
 }
 
-// 设置页读写 DTO（推送时间 + LLM 默认）。不含任何密钥。
+// 设置页读写 DTO（推送时间 + LLM 默认 + 推送自动开关）。不含任何密钥。
 public class UserSettingsDto
 {
     public bool PreMarketEnabled { get; set; } = true;
     public string PreMarketTime { get; set; } = "08:30";
     public bool PostMarketEnabled { get; set; } = true;
     public string PostMarketTime { get; set; } = "15:10";
+    // 默认 false = 分析完不自动推 Server酱，前端按钮手动推。true = 成功/失败都自动推。
+    public bool PushAutoSend { get; set; } = false;
     public string? LlmProvider { get; set; }
     public string? DeepThinkLlm { get; set; }
     public string? QuickThinkLlm { get; set; }

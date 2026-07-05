@@ -64,6 +64,9 @@ export const api = {
     request({ url: '/api/analysis/trigger', method: 'POST', data: { ticker, date } }),
   getJob: (jobId) =>
     request({ url: `/api/analysis/jobs/${jobId}` }),
+  // 手动推已完成的分析报告到 Server酱（设置页"自动推送"关时由前端按钮触发）
+  pushAnalysis: (jobId) =>
+    request({ url: `/api/analysis/jobs/${jobId}/push`, method: 'POST' }),
 
   // 阶段二即将添加的 endpoint
   getWatchlist: () => request({ url: '/api/watchlist' }),

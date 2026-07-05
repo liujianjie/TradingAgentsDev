@@ -26,6 +26,13 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
         _reportsDir = Path.GetFullPath(Path.Combine(env.ContentRootPath, "../../reports"));
     }
 
+    // 读 UserSettings.PushAutoSend；缺记录回退到 false（"不自动推"是新默认行为）。
+    private static async Task<bool> IsAutoPushEnabledAsync(AppDbContext db)
+    {
+        var s = await db.UserSettings.FindAsync(1);
+        return s?.PushAutoSend ?? false;
+    }
+
     private async Task<string> SaveReportAsync(string ticker, string? date, string jobId, string markdown)
     {
         Directory.CreateDirectory(_reportsDir);
@@ -136,7 +143,9 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                     await db.SaveChangesAsync();
                 }
 
-                await push.SendAsync(title, markdown, CancellationToken.None);
+                // 默认不自动推；用户在设置页打开"自动推送"才推。手动推走 POST /api/analysis/jobs/{id}/push。
+                if (await IsAutoPushEnabledAsync(db))
+                    await push.SendAsync(title, markdown, CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -151,10 +160,11 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                     await db.SaveChangesAsync();
                 }
 
-                await push.SendAsync(
-                    $"分析异常: {tickerForBg}",
-                    $"## 编排失败\n\n**Ticker**: {tickerForBg}\n\n**异常**:\n```\n{ex.Message}\n```",
-                    CancellationToken.None);
+                if (await IsAutoPushEnabledAsync(db))
+                    await push.SendAsync(
+                        $"分析异常: {tickerForBg}",
+                        $"## 编排失败\n\n**Ticker**: {tickerForBg}\n\n**异常**:\n```\n{ex.Message}\n```",
+                        CancellationToken.None);
             }
         }, CancellationToken.None);
 
@@ -201,7 +211,8 @@ public class AnalysisOrchestrator : IAnalysisOrchestrator
                         r.UpdatedAt = DateTime.UtcNow;
                         await dbInner.SaveChangesAsync();
                     }
-                    await push.SendAsync(title, markdown, CancellationToken.None);
+                    if (await IsAutoPushEnabledAsync(dbInner))
+                        await push.SendAsync(title, markdown, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {

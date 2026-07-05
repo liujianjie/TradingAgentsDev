@@ -36,6 +36,10 @@ public class UserSettings
     [MaxLength(5)]
     public string PostMarketTime { get; set; } = "15:10";
 
+    // 默认 false = 分析完不自动推 Server酱，由前端报告页按钮手动推。
+    // true = 成功/失败都自动推（含定时任务、Resume 续跑）。
+    public bool PushAutoSend { get; set; } = false;
+
     [MaxLength(32)]
     public string? LlmProvider { get; set; }
     [MaxLength(64)]

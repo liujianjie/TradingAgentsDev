@@ -21,7 +21,8 @@
       "Bash(uv run *)",
       "Bash(mkdir -p \"/c/Users/Administer/.claude/skills/serenity-skill\")",
       "Bash(cp -R \"F:/AIProject/GithubProject/serenity-skill/SKILL.md\" \"F:/AIProject/GithubProject/serenity-skill/LICENSE\" \"F:/AIProject/GithubProject/serenity-skill/references\" \"F:/AIProject/GithubProject/serenity-skill/assets\" \"F:/AIProject/GithubProject/serenity-skill/scripts\" \"F:/AIProject/GithubProject/serenity-skill/examples\" \"F:/AIProject/GithubProject/serenity-skill/agents\" \"/c/Users/Administer/.claude/skills/serenity-skill/\")",
-      "Read(//c/Users/Administer/.claude/skills/**)"
+      "Read(//c/Users/Administer/.claude/skills/**)",
+      "Skill(deep-research)"
     ]
   }
 }
