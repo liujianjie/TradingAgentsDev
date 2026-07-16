@@ -145,6 +145,24 @@ def _sum_turnover(
     return total
 
 
+def _complete_primary_sessions(primary: pd.Series) -> pd.DatetimeIndex:
+    """Drop clearly partial primary-listing bars from the anchor calendar.
+
+    Yahoo occasionally publishes a daily row whose volume is only a tiny
+    fraction of the preceding sessions before replacing it with the complete
+    bar.  Letting that row anchor the ratio creates artificial thousand-fold
+    spikes.  Five prior observations are required before applying the filter,
+    so short/new histories remain usable.
+    """
+    if primary.empty:
+        return primary.index
+    prior_median = primary.rolling(window=20, min_periods=5).median().shift(1)
+    complete = primary.gt(0) & (
+        prior_median.isna() | primary.ge(prior_median * 0.01)
+    )
+    return primary.index[complete]
+
+
 def _coverage(
     instruments: Sequence[Instrument],
     turnovers: Mapping[str, pd.Series],
@@ -177,7 +195,8 @@ def _build_series(
     as_of: pd.Timestamp,
 ) -> dict:
     primary = turnovers.get(definition.primary_symbol, pd.Series(dtype=float))
-    anchor = primary.index[primary.index <= as_of]
+    anchor = _complete_primary_sessions(primary)
+    anchor = anchor[anchor <= as_of]
     company_legs = [
         item
         for item in instruments

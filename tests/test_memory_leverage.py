@@ -124,6 +124,33 @@ def test_company_without_leveraged_product_returns_zero_ratio():
     assert report["series"][0]["latest"]["leverage_weighted_ratio"] == 0
 
 
+def test_partial_primary_listing_bar_is_excluded_from_the_ratio_series():
+    dates = pd.date_range("2026-06-01", periods=7, freq="D")
+    instruments = (
+        Instrument("BASE", "memory", "underlying", "all", "USD", "US", is_primary=True),
+        Instrument("LONG", "memory", "leveraged", "all", "USD", "US", leverage_multiple=2),
+    )
+    batch = MarketDataBatch(
+        histories={
+            "BASE": _history([10] * 7, [1_000] * 6 + [1], dates),
+            "LONG": _history([5] * 7, [100] * 7, dates),
+        },
+        errors={},
+    )
+
+    report = build_memory_leverage_report(
+        instruments,
+        (_definition("memory_all", "memory", "all", "BASE"),),
+        batch,
+        generated_at=datetime(2026, 6, 8, tzinfo=timezone.utc),
+    )
+
+    points = report["series"][0]["points"]
+    assert len(points) == 6
+    assert points[-1]["date"] == "2026-06-06"
+    assert points[-1]["ratio"] == pytest.approx(0.05)
+
+
 def test_default_registry_covers_the_seven_visible_series_and_key_products():
     instruments = default_instruments()
     definitions = default_series_definitions()

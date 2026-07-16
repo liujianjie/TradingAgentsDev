@@ -34,8 +34,8 @@
         </view>
         <view class="control-group scope-group">
           <view>
-            <text class="control-label">市场口径</text>
-            <text class="control-hint">韩国口径仅切换 SK 海力士与三星电子</text>
+            <text class="control-label">下方读数口径</text>
+            <text class="control-hint">趋势图固定同屏比较全球实线与韩国虚线</text>
           </view>
           <view class="scope-switch">
             <button
@@ -70,15 +70,8 @@
           <text>{{ error }}，当前展示上次成功结果。</text>
         </view>
 
-        <view class="card chart-card">
-          <view class="section-head">
-            <view>
-              <text class="section-title">历史趋势</text>
-              <text class="section-note">比率越高，杠杆交易相对正股越活跃</text>
-            </view>
-            <text class="unit-badge">倍</text>
-          </view>
-          <MemoryLeverageChart :series="visibleSeries" />
+        <view class="chart-card">
+          <MemoryLeverageChart :series="chartSeries" :as-of="report.as_of" />
         </view>
 
         <view class="metrics-head">
@@ -167,7 +160,12 @@
 import { computed, onMounted, ref } from 'vue'
 import MemoryLeverageChart from '@/components/MemoryLeverageChart.vue'
 import { quantApi } from '@/utils/api.js'
-import { formatRatio, formatUsd, selectMemorySeries } from '@/utils/memoryLeverage.mjs'
+import {
+  formatRatio,
+  formatUsd,
+  selectChartSeries,
+  selectMemorySeries,
+} from '@/utils/memoryLeverage.mjs'
 
 const dayOptions = [
   { value: 30, label: '1月' },
@@ -183,6 +181,7 @@ const loading = ref(false)
 const error = ref('')
 
 const visibleSeries = computed(() => selectMemorySeries(report.value?.series || [], scope.value))
+const chartSeries = computed(() => selectChartSeries(report.value?.series || []))
 const coverageOk = computed(() =>
   (report.value?.coverage || []).filter(item => item.status === 'ok').length
 )
@@ -251,7 +250,7 @@ onMounted(() => load(false))
 .hero-meta { display: flex; margin-top: 24rpx; color: rgba(255,255,255,.72); font-size: 22rpx; }
 .meta-dot { margin: 0 12rpx; }
 .body { max-width: 1120px; margin: -26rpx auto 0; padding: 0 24rpx 56rpx; }
-.control-card, .chart-card, .method-card { padding: 30rpx; margin-bottom: 24rpx; }
+.control-card, .method-card { padding: 30rpx; margin-bottom: 24rpx; }
 .control-group + .control-group { padding-top: 26rpx; margin-top: 26rpx; border-top: 1rpx solid $line; }
 .control-label { display: block; color: $text; font-size: 25rpx; font-weight: 700; }
 .control-hint { display: block; margin-top: 5rpx; color: $text-3; font-size: 21rpx; }
@@ -279,10 +278,10 @@ onMounted(() => load(false))
   line-height: 52rpx;
 }
 .scope-button-on { color: $primary; background: $surface; box-shadow: 0 3rpx 10rpx rgba(40,50,90,.10); font-weight: 700; }
-.section-head, .metrics-head { display: flex; align-items: flex-start; justify-content: space-between; }
+.metrics-head { display: flex; align-items: flex-start; justify-content: space-between; }
 .section-title { display: block; color: $text; font-size: 31rpx; font-weight: 800; }
 .section-note { display: block; margin-top: 7rpx; color: $text-3; font-size: 22rpx; }
-.unit-badge, .market-badge {
+.market-badge {
   padding: 6rpx 14rpx;
   border-radius: $radius-pill;
   background: $surface-2;
@@ -290,8 +289,7 @@ onMounted(() => load(false))
   font-size: 20rpx;
   font-weight: 700;
 }
-.chart-card { overflow: hidden; }
-.chart-card .chart-shell { margin-top: 24rpx; }
+.chart-card { overflow: hidden; margin-bottom: 24rpx; }
 .metrics-head { align-items: baseline; margin: 34rpx 8rpx 18rpx; }
 .metrics-date { color: $text-3; font-size: 21rpx; }
 .metrics-grid { display: grid; grid-template-columns: 1fr; gap: 18rpx; }
