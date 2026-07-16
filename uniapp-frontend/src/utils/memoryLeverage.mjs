@@ -11,6 +11,13 @@ const CHART_ORDER = [
 const CHART_RANK = new Map(CHART_ORDER.map((id, index) => [id, index]))
 
 
+export function displayCompanyName(value) {
+  return typeof value === 'string'
+    ? value.replace(/\s+\((all|kr)\)$/i, '')
+    : ''
+}
+
+
 export function selectMemorySeries(series, scope) {
   if (!Array.isArray(series)) return []
   if (scope !== 'kr') return series.filter(item => item.scope === 'all')
@@ -74,16 +81,12 @@ export function leverageMetrics(latest) {
   const shortTurnoverUsd = Number.isFinite(latest?.short_turnover_usd)
     ? latest.short_turnover_usd
     : 0
-  const underlyingTurnoverUsd = Number.isFinite(latest?.underlying_turnover_usd)
-    ? latest.underlying_turnover_usd
-    : 0
   const totalTurnoverUsd = longTurnoverUsd + shortTurnoverUsd
 
   return {
     totalTurnoverUsd,
     longShare: totalTurnoverUsd > 0 ? longTurnoverUsd / totalTurnoverUsd : null,
     shortShare: totalTurnoverUsd > 0 ? shortTurnoverUsd / totalTurnoverUsd : null,
-    turnoverDifferenceUsd: totalTurnoverUsd - underlyingTurnoverUsd,
   }
 }
 

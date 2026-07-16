@@ -6,6 +6,7 @@ import {
   chartLinePattern,
   chartMonthTicks,
   chartYAxisTicks,
+  displayCompanyName,
   formatPercent,
   formatRatio,
   formatUsd,
@@ -33,6 +34,13 @@ test('global scope hides duplicate KR-only series', () => {
     selectMemorySeries(series, 'all').map(item => item.id),
     ['sandisk_all', 'micron_all', 'sk_hynix_all', 'samsung_all', 'kioxia_all'],
   )
+})
+
+
+test('company cards remove duplicated English scope suffixes', () => {
+  assert.equal(displayCompanyName('SK hynix (all)'), 'SK hynix')
+  assert.equal(displayCompanyName('Samsung (KR)'), 'Samsung')
+  assert.equal(displayCompanyName('Micron'), 'Micron')
 })
 
 
@@ -132,7 +140,6 @@ test('latest leverage metrics expose total turnover and long-short composition',
   assert.equal(metrics.totalTurnoverUsd, 30)
   assert.equal(metrics.longShare, 2 / 3)
   assert.equal(metrics.shortShare, 1 / 3)
-  assert.equal(metrics.turnoverDifferenceUsd, -70)
 })
 
 

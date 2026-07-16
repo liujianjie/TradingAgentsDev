@@ -34,7 +34,7 @@ leverage_weighted_ratio(t)
 ```
 
 - `leverage_ratio` 对应截图的主指标，分子使用杠杆 ETF/ETN/ETP 的**实际美元成交额**，不先乘杠杆倍数。
-- `leverage_weighted_ratio` 对应截图的 `lev-wtd`，分子按 `abs(±2x/±3x)` 加权。
+- `leverage_weighted_ratio` 对应截图的 `lev-wtd`，界面统一显示为“杠杆倍数折算比”，分子按 `abs(±2x/±3x)` 加权。
 - `long_turnover_usd` 和 `short_turnover_usd` 按产品杠杆倍数正负拆分。
 - `change_1d` 是最新两个有效主板交易日的 `leverage_ratio` 之差，不是百分比变化。
 - ADR/GDR 的价格和成交量按其自身证券直接计算美元成交额，不换算为等价普通股股数，因为指标比较的是各证券实际成交金额。
@@ -179,6 +179,8 @@ docs/
 ## 7. 前端契约
 
 - 页面标题“存储杠杆率”，副标题明确“杠杆产品成交额 ÷ 正股/ADR/GDR 成交额”。
+- 用户可见指标全部使用中文名称；最新读数卡展示杠杆产品总成交额、正向/反向构成与占比、正股成交额、杠杆倍数折算比和行情可用产品数量。
+- 页面底部提供“指标怎么读”、具体算例以及“成交额不等于净流入/持仓/公司财务杠杆”的提示。
 - 30/90/220/365 日窗口切换，默认 220 日。
 - “全球 / 仅韩股”切换仅影响 SK hynix 与 Samsung；SanDisk、Micron、Kioxia 始终显示。
 - 使用 UniApp `canvas` 绘制折线，不引入 ECharts；数据更新后重新绘制。

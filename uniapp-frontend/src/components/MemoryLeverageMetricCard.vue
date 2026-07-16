@@ -3,7 +3,7 @@
     <view class="metric-top">
       <view class="company-line">
         <view class="company-dot" :style="{ backgroundColor: item.color }" />
-        <text class="company-name">{{ item.company_name }}</text>
+        <text class="company-name">{{ displayCompanyName(item.company_name) }}</text>
       </view>
       <text class="market-badge">{{ item.scope === 'kr' ? '仅韩国' : '全球' }}</text>
     </view>
@@ -67,9 +67,9 @@
           <text class="detail-hint">2倍产品按2倍折算</text>
         </view>
         <view class="detail-item">
-          <text class="detail-label">纳入杠杆产品</text>
+          <text class="detail-label">行情可用杠杆产品</text>
           <text class="detail-value">{{ productCount }} 只</text>
-          <text class="detail-hint">有当日有效行情</text>
+          <text class="detail-hint">按当前产品清单统计</text>
         </view>
       </view>
     </template>
@@ -81,6 +81,7 @@
 <script setup>
 import { computed } from 'vue'
 import {
+  displayCompanyName,
   formatPercent,
   formatRatio,
   formatUsd,
