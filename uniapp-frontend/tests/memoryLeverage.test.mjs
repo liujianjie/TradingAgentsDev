@@ -7,12 +7,15 @@ import {
   chartMonthTicks,
   chartYAxisTicks,
   displayCompanyName,
+  filterSeriesByDays,
   formatPercent,
   formatRatio,
   formatUsd,
   leverageMetrics,
   leverageProductCount,
   layoutEndLabels,
+  selectSnapshotDates,
+  selectSeriesSnapshot,
   selectChartSeries,
   selectMemorySeries,
 } from '../src/utils/memoryLeverage.mjs'
@@ -177,4 +180,71 @@ test('chart domain ignores invalid points and keeps a non-zero y range', () => {
   assert.equal(domain.minTime, Date.parse('2026-07-09'))
   assert.equal(domain.maxTime, Date.parse('2026-07-10'))
   assert.equal(domain.maxRatio, 0.4)
+})
+
+
+test('history window is filtered locally without changing the latest reading', () => {
+  const source = [{
+    id: 'micron_all',
+    latest: { date: '2026-07-15', ratio: 0.3 },
+    points: [
+      { date: '2026-06-01', ratio: 0.1 },
+      { date: '2026-07-01', ratio: 0.2 },
+      { date: '2026-07-15', ratio: 0.3 },
+    ],
+  }]
+
+  const filtered = filterSeriesByDays(source, 30, '2026-07-15')
+
+  assert.deepEqual(filtered[0].points.map(point => point.date), ['2026-07-01', '2026-07-15'])
+  assert.equal(filtered[0].latest.ratio, 0.3)
+  assert.equal(source[0].points.length, 3)
+})
+
+
+test('snapshot dates use common trading dates and support previous sessions', () => {
+  const source = [
+    {
+      points: [
+        { date: '2026-07-11', ratio: 0.1 },
+        { date: '2026-07-14', ratio: 0.2 },
+        { date: '2026-07-15', ratio: 0.3 },
+      ],
+    },
+    {
+      points: [
+        { date: '2026-07-10', ratio: 0.4 },
+        { date: '2026-07-14', ratio: 0.5 },
+        { date: '2026-07-15', ratio: 0.6 },
+      ],
+    },
+  ]
+
+  assert.deepEqual(selectSnapshotDates(source, 5), ['2026-07-15', '2026-07-14'])
+})
+
+
+test('selected snapshot replaces card latest metrics with the chosen day', () => {
+  const source = [{
+    id: 'sandisk_all',
+    latest: { date: '2026-07-15', ratio: 0.3 },
+    points: [
+      {
+        date: '2026-07-14',
+        ratio: 0.2,
+        change_1d: 0.05,
+        long_turnover_usd: 20,
+        short_turnover_usd: 5,
+        leverage_weighted_ratio: 0.4,
+        underlying_turnover_usd: 125,
+      },
+      { date: '2026-07-15', ratio: 0.3 },
+    ],
+  }]
+
+  const selected = selectSeriesSnapshot(source, '2026-07-14')
+
+  assert.equal(selected[0].latest.date, '2026-07-14')
+  assert.equal(selected[0].latest.long_turnover_usd, 20)
+  assert.equal(source[0].latest.date, '2026-07-15')
 })

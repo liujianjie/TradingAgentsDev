@@ -41,6 +41,52 @@ export function selectChartSeries(series) {
 }
 
 
+export function filterSeriesByDays(series, days, asOf) {
+  if (!Array.isArray(series)) return []
+  const parsedEnd = Date.parse(asOf)
+  if (!Number.isFinite(days) || days <= 0 || !Number.isFinite(parsedEnd)) {
+    return series.map(item => ({ ...item, points: [...(item.points || [])] }))
+  }
+  const start = parsedEnd - days * 24 * 60 * 60 * 1000
+  return series.map(item => ({
+    ...item,
+    points: (item.points || []).filter(point => {
+      const time = Date.parse(point.date)
+      return Number.isFinite(time) && time >= start && time <= parsedEnd
+    }),
+  }))
+}
+
+
+export function selectSnapshotDates(series, limit = 8) {
+  if (!Array.isArray(series) || limit <= 0) return []
+  const dateSets = series
+    .map(item => new Set(
+      (item.points || [])
+        .map(point => point.date)
+        .filter(date => Number.isFinite(Date.parse(date))),
+    ))
+    .filter(dates => dates.size > 0)
+  if (!dateSets.length) return []
+
+  let commonDates = [...dateSets[0]]
+  for (const dates of dateSets.slice(1)) {
+    commonDates = commonDates.filter(date => dates.has(date))
+  }
+  return commonDates.sort((left, right) => right.localeCompare(left)).slice(0, limit)
+}
+
+
+export function selectSeriesSnapshot(series, selectedDate) {
+  if (!Array.isArray(series)) return []
+  if (!selectedDate) return series
+  return series.map(item => ({
+    ...item,
+    latest: (item.points || []).find(point => point.date === selectedDate) || null,
+  }))
+}
+
+
 export function chartLinePattern(item) {
   if (item?.company_id === 'kioxia') return [2, 4]
   if (item?.scope === 'kr') return [7, 5]

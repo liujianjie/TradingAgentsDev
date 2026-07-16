@@ -14,12 +14,19 @@
         <text class="meta-dot">·</text>
         <text>覆盖 {{ coverageOk }}/{{ report.coverage.length }}</text>
       </view>
+      <view v-if="report" class="hero-cache">
+        <text>数据更新 {{ generatedAtLabel }}</text>
+        <text :class="['cache-pill', report.cache?.is_stale && 'cache-pill-stale']">
+          {{ cacheLabel }}
+        </text>
+      </view>
     </view>
 
     <view class="body">
       <view class="card control-card">
         <view class="control-group">
           <text class="control-label">时间窗口</text>
+          <text class="control-hint">只裁剪已下载的历史图，不会重复拉取行情</text>
           <view class="chip-row">
             <button
               v-for="option in dayOptions"
@@ -29,6 +36,22 @@
               @click="chooseDays(option.value)"
             >
               {{ option.label }}
+            </button>
+          </view>
+        </view>
+        <view class="control-group">
+          <text class="control-label">回看交易日</text>
+          <text class="control-hint">按各市场共同交易日排列，可直接查看昨天、前天的完整读数</text>
+          <view class="snapshot-row">
+            <button
+              v-for="option in snapshotOptions"
+              :key="option.date"
+              :class="['snapshot-chip', selectedDate === option.date && 'snapshot-chip-on']"
+              :aria-pressed="selectedDate === option.date"
+              @click="selectedDate = option.date"
+            >
+              <text class="snapshot-name">{{ option.label }}</text>
+              <text class="snapshot-date">{{ option.date.slice(5) }}</text>
             </button>
           </view>
         </view>
@@ -69,14 +92,17 @@
         <view v-if="error" class="stale-banner" role="status">
           <text>{{ error }}，当前展示上次成功结果。</text>
         </view>
+        <view v-if="report.cache?.is_stale" class="stale-banner" role="status">
+          <text>行情源暂时不可用，当前展示 {{ generatedAtLabel }} 保存的历史缓存。</text>
+        </view>
 
         <view class="chart-card">
           <MemoryLeverageChart :series="chartSeries" :as-of="report.as_of" />
         </view>
 
         <view class="metrics-head">
-          <text class="section-title">最新读数</text>
-          <text class="metrics-date">交易日 {{ report.as_of }}</text>
+          <text class="section-title">{{ metricsTitle }}</text>
+          <text class="metrics-date">交易日 {{ selectedDate || report.as_of }}</text>
         </view>
         <view v-if="visibleSeries.length" class="metrics-grid">
           <MemoryLeverageMetricCard
@@ -111,41 +137,92 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MemoryLeverageChart from '@/components/MemoryLeverageChart.vue'
 import MemoryLeverageGuide from '@/components/MemoryLeverageGuide.vue'
 import MemoryLeverageMetricCard from '@/components/MemoryLeverageMetricCard.vue'
 import { quantApi } from '@/utils/api.js'
 import {
+  filterSeriesByDays,
   leverageProductCount,
   selectChartSeries,
   selectMemorySeries,
+  selectSeriesSnapshot,
+  selectSnapshotDates,
 } from '@/utils/memoryLeverage.mjs'
 
+const FETCH_DAYS = 730
 const dayOptions = [
   { value: 30, label: '1月' },
   { value: 90, label: '3月' },
-  { value: 220, label: '1年' },
-  { value: 365, label: '更长' },
+  { value: 365, label: '1年' },
+  { value: 730, label: '2年' },
 ]
 
-const days = ref(220)
+const days = ref(365)
 const scope = ref('all')
+const selectedDate = ref('')
 const report = ref(null)
 const loading = ref(false)
 const error = ref('')
 
-const visibleSeries = computed(() => selectMemorySeries(report.value?.series || [], scope.value))
-const chartSeries = computed(() => selectChartSeries(report.value?.series || []))
+const scopeSeries = computed(() => selectMemorySeries(report.value?.series || [], scope.value))
+const snapshotDates = computed(() => selectSnapshotDates(scopeSeries.value, 8))
+const snapshotOptions = computed(() => snapshotDates.value.map((date, index) => ({
+  date,
+  label: index === 0
+    ? '最新'
+    : index === 1
+      ? '前1交易日'
+      : index === 2
+        ? '前2交易日'
+        : '历史',
+})))
+const visibleSeries = computed(() =>
+  selectSeriesSnapshot(scopeSeries.value, selectedDate.value)
+)
+const chartSeries = computed(() =>
+  filterSeriesByDays(
+    selectChartSeries(report.value?.series || []),
+    days.value,
+    report.value?.as_of,
+  )
+)
 const coverageOk = computed(() =>
   (report.value?.coverage || []).filter(item => item.status === 'ok').length
 )
 const missingCoverage = computed(() =>
   (report.value?.coverage || []).filter(item => item.status === 'missing').length
 )
+const metricsTitle = computed(() =>
+  selectedDate.value && selectedDate.value !== snapshotDates.value[0]
+    ? '历史读数'
+    : '最新读数'
+)
+const cacheLabel = computed(() => ({
+  live: '实时拉取',
+  memory: '内存缓存',
+  disk: '本地缓存',
+  stale_disk: '过期缓存',
+}[report.value?.cache?.layer] || '缓存状态未知'))
+const generatedAtLabel = computed(() => formatDateTime(report.value?.generated_at))
+
+watch(snapshotDates, dates => {
+  if (!dates.includes(selectedDate.value)) {
+    selectedDate.value = dates[0] || ''
+  }
+})
 
 function productCount(item) {
   return leverageProductCount(report.value?.coverage || [], item)
+}
+
+function formatDateTime(value) {
+  const parsed = new Date(value)
+  if (!value || Number.isNaN(parsed.getTime())) return '—'
+  const pad = number => String(number).padStart(2, '0')
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`
+    + ` ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`
 }
 
 async function load(refresh = false) {
@@ -153,7 +230,8 @@ async function load(refresh = false) {
   loading.value = true
   error.value = ''
   try {
-    report.value = await quantApi.memoryLeverage(days.value, refresh)
+    report.value = await quantApi.memoryLeverage(FETCH_DAYS, refresh)
+    selectedDate.value = ''
   } catch {
     error.value = '行情服务暂时不可用，请稍后重试'
   } finally {
@@ -164,7 +242,6 @@ async function load(refresh = false) {
 function chooseDays(value) {
   if (days.value === value) return
   days.value = value
-  load(false)
 }
 
 onMounted(() => load(false))
@@ -197,6 +274,16 @@ onMounted(() => load(false))
 .subtitle { display: block; margin-top: 10rpx; color: rgba(255,255,255,.88); font-size: 27rpx; }
 .hero-meta { display: flex; margin-top: 24rpx; color: rgba(255,255,255,.72); font-size: 22rpx; }
 .meta-dot { margin: 0 12rpx; }
+.hero-cache { display: flex; align-items: center; gap: 12rpx; margin-top: 12rpx; color: rgba(255,255,255,.68); font-size: 20rpx; }
+.cache-pill {
+  padding: 4rpx 12rpx;
+  border: 1rpx solid rgba(255,255,255,.2);
+  border-radius: $radius-pill;
+  background: rgba(255,255,255,.10);
+  color: rgba(255,255,255,.9);
+  font-weight: 700;
+}
+.cache-pill-stale { border-color: rgba(255,202,112,.5); background: rgba(187,115,0,.35); color: #ffe1aa; }
 .body { max-width: 1120px; margin: -26rpx auto 0; padding: 0 24rpx 56rpx; }
 .control-card { padding: 30rpx; margin-bottom: 24rpx; }
 .control-group + .control-group { padding-top: 26rpx; margin-top: 26rpx; border-top: 1rpx solid $line; }
@@ -214,6 +301,23 @@ onMounted(() => load(false))
   line-height: 66rpx;
 }
 .chip-on { color: $primary; background: rgba(79,110,247,.10); border-color: rgba(79,110,247,.22); font-weight: 700; }
+.snapshot-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 18rpx; }
+.snapshot-chip {
+  min-width: 130rpx;
+  margin: 0;
+  padding: 12rpx 18rpx;
+  border: 1rpx solid $line;
+  border-radius: $radius-sm;
+  background: $surface;
+  color: $text-2;
+  line-height: 1.25;
+}
+.snapshot-chip::after { border: 0; }
+.snapshot-chip-on { border-color: rgba(79,110,247,.35); background: rgba(79,110,247,.10); color: $primary; }
+.snapshot-name, .snapshot-date { display: block; }
+.snapshot-name { font-size: 21rpx; font-weight: 700; }
+.snapshot-date { margin-top: 5rpx; color: $text-3; font-size: 18rpx; font-variant-numeric: tabular-nums; }
+.snapshot-chip-on .snapshot-date { color: rgba(79,110,247,.75); }
 .scope-group { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; }
 .scope-switch { display: flex; flex: none; padding: 6rpx; background: $surface-2; border-radius: $radius-pill; }
 .scope-button {

@@ -126,7 +126,7 @@ docs/
 查询参数：
 
 - `days`：自然日回看窗口，整数，`30..730`，默认 `220`。
-- `refresh`：是否绕过进程内缓存，布尔值，默认 `false`。
+- `refresh`：是否绕过新鲜的内存/磁盘缓存并重新拉取行情，布尔值，默认 `false`。
 
 成功响应固定为：
 
@@ -156,7 +156,15 @@ docs/
         "underlying_turnover_usd": 0.0
       },
       "points": [
-        { "date": "2026-07-15", "ratio": 0.0 }
+        {
+          "date": "2026-07-15",
+          "ratio": 0.0,
+          "change_1d": 0.0,
+          "long_turnover_usd": 0.0,
+          "short_turnover_usd": 0.0,
+          "leverage_weighted_ratio": 0.0,
+          "underlying_turnover_usd": 0.0
+        }
       ]
     }
   ],
@@ -168,20 +176,29 @@ docs/
       "last_date": "2026-07-15"
     }
   ],
-  "warnings": []
+  "warnings": [],
+  "cache": {
+    "layer": "live",
+    "is_stale": false,
+    "ttl_seconds": 900
+  }
 }
 ```
 
 - 输出顺序稳定：SanDisk、Micron、SK hynix(all)、SK hynix(KR)、Samsung(all)、Samsung(KR)、Kioxia。
 - 单个代码缺失仍返回 `200`，并通过 `coverage`/`warnings` 暴露；所有主上市腿均失败时返回现有 FastAPI 风格的 `502 {"detail": "..."}`，不暴露堆栈或第三方原始响应。
-- 进程内缓存 TTL 为 15 分钟；`refresh=true` 仅用于手动研究刷新。
+- `points` 与 `latest` 使用同一组完整日指标，前端回看历史交易日时无需再次请求。
+- 缓存 TTL 为 15 分钟：先查进程内缓存，再查位于 `data_cache_dir/memory-leverage` 的版本化 JSON 磁盘缓存；磁盘缓存可跨 API 重启复用。
+- 行情源失败但存在历史磁盘缓存时返回 `200`、`cache.layer=stale_disk`、`cache.is_stale=true`，并在 `warnings` 明示缓存回退；没有任何可用缓存时才返回 `502`。
 
 ## 7. 前端契约
 
 - 页面标题“存储杠杆率”，副标题明确“杠杆产品成交额 ÷ 正股/ADR/GDR 成交额”。
 - 用户可见指标全部使用中文名称；最新读数卡展示杠杆产品总成交额、正向/反向构成与占比、正股成交额、杠杆倍数折算比和行情可用产品数量。
 - 页面底部提供“指标怎么读”、具体算例以及“成交额不等于净流入/持仓/公司财务杠杆”的提示。
-- 30/90/220/365 日窗口切换，默认 220 日。
+- 页面一次请求 730 日数据；30/90/365/730 日窗口只在本地裁剪趋势图，默认 365 日，切换窗口不会重复拉取行情。
+- 提供最近 8 个共同交易日的快照按钮，前三项显示“最新 / 前1交易日 / 前2交易日”；切换后卡片展示对应交易日的完整成交额、方向构成和折算比。
+- 顶部展示数据生成时间与“实时拉取 / 内存缓存 / 本地缓存 / 过期缓存”状态；过期缓存必须显示醒目提示。
 - “全球 / 仅韩股”切换仅影响 SK hynix 与 Samsung；SanDisk、Micron、Kioxia 始终显示。
 - 使用 UniApp `canvas` 绘制折线，不引入 ECharts；数据更新后重新绘制。
 - 同时用文字标签显示每条线的名称和最新值，不能仅靠颜色区分。

@@ -98,7 +98,7 @@ export const serenityApi = {
 
 // 量化工具箱：存储板块杠杆产品成交额 / 正股成交额。
 export const quantApi = {
-  memoryLeverage: (days = 220, refresh = false) =>
+  memoryLeverage: (days = 730, refresh = false) =>
     serenityRequest({
       url: `/api/v1/quant/memory-leverage-ratios?days=${days}&refresh=${refresh}`,
     }),
