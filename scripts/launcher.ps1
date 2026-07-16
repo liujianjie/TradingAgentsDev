@@ -101,15 +101,18 @@ function Start-Dotnet {
 
 function Start-UniApp {
     if (Test-Port 28300) { Write-Host '  UniApp 已在 :28300 运行，跳过' -ForegroundColor Yellow; return }
-    if (-not (Test-CommandExists 'npm')) {
+    # Windows 上可能存在抢在 npm.cmd 前面的无扩展名 npm 文件；它会触发“选择打开方式”。
+    $npmCommand = Get-Command 'npm.cmd' -ErrorAction SilentlyContinue
+    if ($null -eq $npmCommand) {
         Write-Host '  ❌ 未检测到 npm，请安装 Node.js 18+' -ForegroundColor Red
         return
     }
+    $escapedNpmCommand = $npmCommand.Source.Replace("'", "''")
     Write-Host '  启动 UniApp H5 on :28300 ...' -ForegroundColor Green
     Start-Process -FilePath 'powershell.exe' -ArgumentList @(
         '-NoExit', '-NoProfile',
         '-Command',
-        "Set-Location '$UNIAPP_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - UniApp H5 :28300'; npm run dev:h5"
+        "Set-Location '$UNIAPP_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - UniApp H5 :28300'; & '$escapedNpmCommand' run dev:h5"
     ) | Out-Null
 }
 
