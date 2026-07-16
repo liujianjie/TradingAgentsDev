@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+import sys
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -7,7 +9,10 @@ from tradingagents.quant.memory_leverage import (
     Instrument,
     MarketDataBatch,
     SeriesDefinition,
+    YFinanceMarketDataProvider,
     build_memory_leverage_report,
+    default_instruments,
+    default_series_definitions,
 )
 
 
@@ -117,3 +122,77 @@ def test_company_without_leveraged_product_returns_zero_ratio():
 
     assert report["series"][0]["latest"]["ratio"] == 0
     assert report["series"][0]["latest"]["leverage_weighted_ratio"] == 0
+
+
+def test_default_registry_covers_the_seven_visible_series_and_key_products():
+    instruments = default_instruments()
+    definitions = default_series_definitions()
+
+    assert [item.id for item in definitions] == [
+        "sandisk_all",
+        "micron_all",
+        "sk_hynix_all",
+        "sk_hynix_kr",
+        "samsung_all",
+        "samsung_kr",
+        "kioxia_all",
+    ]
+    symbols = {item.symbol for item in instruments}
+    assert len(symbols) == len(instruments)
+    assert {
+        "SNXX",
+        "SNDU",
+        "SNDG",
+        "SNDQ",
+        "MUU",
+        "MULL",
+        "MUD",
+        "0193T0.KS",
+        "0197X0.KS",
+        "7709.HK",
+        "SKHY",
+        "0193W0.KS",
+        "0193L0.KS",
+        "7747.HK",
+        "7347.HK",
+    }.issubset(symbols)
+    assert all(item.leverage_multiple != 0 for item in instruments if item.role == "leveraged")
+    assert all(item.source_url for item in instruments if item.role == "leveraged")
+
+
+def test_yfinance_provider_avoids_optional_repair_dependency_and_cache_races(monkeypatch):
+    columns = pd.MultiIndex.from_tuples(
+        [
+            ("AAA", "Close"),
+            ("AAA", "Volume"),
+            ("KRW=X", "Close"),
+            ("KRW=X", "Volume"),
+        ]
+    )
+    downloaded = pd.DataFrame(
+        [[10.0, 100.0, 1_000.0, 0.0]],
+        index=pd.to_datetime(["2026-07-10"]),
+        columns=columns,
+    )
+    seen = {}
+
+    def fake_download(tickers, **kwargs):
+        seen["tickers"] = tickers
+        seen.update(kwargs)
+        return downloaded
+
+    monkeypatch.setitem(sys.modules, "yfinance", SimpleNamespace(download=fake_download))
+
+    batch = YFinanceMarketDataProvider().fetch(
+        ["AAA", "KRW=X"],
+        start=date(2026, 7, 1),
+        end=date(2026, 7, 11),
+    )
+
+    assert seen["auto_adjust"] is False
+    assert seen["repair"] is False
+    assert seen["threads"] is False
+    assert seen["group_by"] == "ticker"
+    assert batch.histories["AAA"]["Close"].tolist() == [10.0]
+    assert batch.histories["KRW=X"]["Close"].tolist() == [1_000.0]
+    assert batch.errors == {}

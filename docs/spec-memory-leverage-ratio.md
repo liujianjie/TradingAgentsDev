@@ -85,7 +85,7 @@ leverage_weighted_ratio(t)
 ### 4.1 行情
 
 - 运行时：Yahoo Finance 的公开日线接口，经项目已有 `yfinance 1.4.1` 调用。
-- 批量下载：`yf.download(..., interval="1d", auto_adjust=False, repair=True)`；官方参数文档：<https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html>。
+- 批量下载：`yf.download(..., interval="1d", auto_adjust=False, repair=False, threads=False)`；`repair=True` 在当前 yfinance 会额外依赖项目未安装的 SciPy，因此按“不新增依赖”约束关闭，改由本模块的价格/成交量/汇率有限值校验防污染。官方参数文档：<https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html>。
 - 外汇：同一接口拉取 `KRW=X`、`JPY=X`、`HKD=X`、`EURUSD=X`、`GBPUSD=X` 等日线；注册表中的行情币种决定换算方向。
 - 使用限制：yfinance 官方明确其 Yahoo 接口面向研究/教育及个人使用，部署或再分发前应再次核对数据许可：<https://ranaroussi.github.io/yfinance/index.html>。
 

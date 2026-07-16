@@ -8,7 +8,7 @@ receipts.  It is a market-activity measure, not a balance-sheet leverage ratio.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Mapping, Sequence
 
 import pandas as pd
@@ -267,3 +267,209 @@ def build_memory_leverage_report(
         "coverage": coverage,
         "warnings": warnings,
     }
+
+
+_SRC = {
+    "sndg": "https://leverageshares.com/us/etfs/leverage-shares-2x-long-sndk-daily-etf/",
+    "sndu": "https://www.rexshares.com/rex-shares-launches-t-rex-2x-paas-paau-2x-sndk-sndu-etfs/",
+    "sndx": "https://www.sec.gov/Archives/edgar/data/1587982/000121390026046509/ea0285820-01_485bpos.htm",
+    "mu": "https://www.direxion.com/product/daily-mu-bull-and-bear-leveraged-single-stock-etfs",
+    "mull": "https://graniteshares.com/etfs/mull/",
+    "mu2": "https://leverageshares.com/documents/factsheet/2x_mu_factsheet.pdf",
+    "kr": "https://www.samsungfund.com/etf/insight/newsroom/view.do?seq=76433",
+    "sk_hk": "https://www.hkex.com.hk/News/Products-and-Services/2026/260527news",
+    "sk_eu": "https://leverageshares.com/documents/ft/3x_hnx3_ft_cbi.pdf",
+    "sk_us": "https://www.direxion.com/press-release/direxion-launches-skhl-2x-daily-exposure-to-sk-hynix",
+    "sk_us_multi": "https://graniteshares.com/etfs/leveraged/",
+    "samsung_hk": "https://www.hkex.com.hk/News/Products-and-Services/2026/260527news",
+    "samsung_eu": "https://leverageshares.com/documents/factsheet/3x_smg3_factsheet.pdf",
+}
+
+
+def _instrument(
+    symbol: str,
+    company_id: str,
+    role: Role,
+    scope: Scope,
+    currency: str,
+    venue: str,
+    *,
+    leverage: float = 1.0,
+    primary: bool = False,
+    source: str = "",
+) -> Instrument:
+    return Instrument(
+        symbol=symbol,
+        company_id=company_id,
+        role=role,
+        scope=scope,
+        currency=currency,
+        venue=venue,
+        leverage_multiple=leverage,
+        is_primary=primary,
+        name=symbol,
+        source_url=source,
+    )
+
+
+def default_instruments() -> tuple[Instrument, ...]:
+    """Return the reviewed 2026-07-16 instrument registry."""
+    i = _instrument
+    return (
+        i("SNDK", "sandisk", "underlying", "all", "USD", "NASDAQ", primary=True),
+        i("SNXX", "sandisk", "leveraged", "all", "USD", "CBOE", leverage=2, source=_SRC["sndx"]),
+        i("SNDU", "sandisk", "leveraged", "all", "USD", "CBOE", leverage=2, source=_SRC["sndu"]),
+        i("SNDG", "sandisk", "leveraged", "all", "USD", "CBOE", leverage=2, source=_SRC["sndg"]),
+        i("SNDQ", "sandisk", "leveraged", "all", "USD", "CBOE", leverage=-2, source=_SRC["sndx"]),
+        i("MU", "micron", "underlying", "all", "USD", "NASDAQ", primary=True),
+        i("MUU", "micron", "leveraged", "all", "USD", "NASDAQ", leverage=2, source=_SRC["mu"]),
+        i("MULL", "micron", "leveraged", "all", "USD", "NASDAQ", leverage=2, source=_SRC["mull"]),
+        i("MU2.L", "micron", "leveraged", "all", "USD", "LSE", leverage=2, source=_SRC["mu2"]),
+        i("MUD", "micron", "leveraged", "all", "USD", "NASDAQ", leverage=-1, source=_SRC["mu"]),
+        i("000660.KS", "sk_hynix", "underlying", "kr", "KRW", "KRX", primary=True),
+        i("SKHY", "sk_hynix", "underlying", "all", "USD", "NASDAQ"),
+        i("0193T0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0195S0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0197W0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0194T0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0192L0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0198D0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0194R0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0197X0.KS", "sk_hynix", "leveraged", "kr", "KRW", "KRX", leverage=-2, source=_SRC["kr"]),
+        i("7709.HK", "sk_hynix", "leveraged", "all", "HKD", "HKEX", leverage=2, source=_SRC["sk_hk"]),
+        i("HNX3.L", "sk_hynix", "leveraged", "all", "USD", "LSE", leverage=3, source=_SRC["sk_eu"]),
+        i("SKHL", "sk_hynix", "leveraged", "all", "USD", "NYSE", leverage=2, source=_SRC["sk_us"]),
+        i("SKHX", "sk_hynix", "leveraged", "all", "USD", "CBOE", leverage=2, source=_SRC["sk_us_multi"]),
+        i("SKUU", "sk_hynix", "leveraged", "all", "USD", "NASDAQ", leverage=2, source=_SRC["sk_us_multi"]),
+        i("SKDD", "sk_hynix", "leveraged", "all", "USD", "NASDAQ", leverage=-2, source=_SRC["sk_us_multi"]),
+        i("005930.KS", "samsung", "underlying", "kr", "KRW", "KRX", primary=True),
+        i("SMSN.IL", "samsung", "underlying", "all", "USD", "LSE"),
+        i("0193W0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0195R0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0194M0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0192M0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0193K0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0194N0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0198B0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=2, source=_SRC["kr"]),
+        i("0193L0.KS", "samsung", "leveraged", "kr", "KRW", "KRX", leverage=-2, source=_SRC["kr"]),
+        i("7747.HK", "samsung", "leveraged", "all", "HKD", "HKEX", leverage=2, source=_SRC["samsung_hk"]),
+        i("7347.HK", "samsung", "leveraged", "all", "HKD", "HKEX", leverage=-2, source=_SRC["samsung_hk"]),
+        i("SMG3.L", "samsung", "leveraged", "all", "USD", "LSE", leverage=3, source=_SRC["samsung_eu"]),
+        i("285A.T", "kioxia", "underlying", "all", "JPY", "TSE", primary=True),
+    )
+
+
+def default_series_definitions() -> tuple[SeriesDefinition, ...]:
+    return (
+        SeriesDefinition("sandisk_all", "sandisk", "SanDisk", "all", "SNDK", "#58A6FF"),
+        SeriesDefinition("micron_all", "micron", "Micron", "all", "MU", "#35B8A0"),
+        SeriesDefinition("sk_hynix_all", "sk_hynix", "SK hynix (all)", "all", "000660.KS", "#D99000"),
+        SeriesDefinition("sk_hynix_kr", "sk_hynix", "SK hynix (KR)", "kr", "000660.KS", "#F2B84B"),
+        SeriesDefinition("samsung_all", "samsung", "Samsung (all)", "all", "005930.KS", "#138A42"),
+        SeriesDefinition("samsung_kr", "samsung", "Samsung (KR)", "kr", "005930.KS", "#50B36A"),
+        SeriesDefinition("kioxia_all", "kioxia", "Kioxia", "all", "285A.T", "#9B7CE8"),
+    )
+
+
+def _extract_downloaded_frame(
+    downloaded: pd.DataFrame,
+    symbol: str,
+    symbol_count: int,
+) -> pd.DataFrame:
+    if downloaded is None or downloaded.empty:
+        return pd.DataFrame()
+    if isinstance(downloaded.columns, pd.MultiIndex):
+        for level in range(downloaded.columns.nlevels):
+            if symbol in downloaded.columns.get_level_values(level):
+                frame = downloaded.xs(symbol, axis=1, level=level, drop_level=True)
+                if isinstance(frame, pd.Series):
+                    frame = frame.to_frame()
+                return frame
+        return pd.DataFrame()
+    if symbol_count == 1:
+        return downloaded.copy()
+    return pd.DataFrame()
+
+
+class YFinanceMarketDataProvider:
+    """Bulk daily-bar adapter for the project's existing yfinance dependency."""
+
+    def fetch(
+        self,
+        symbols: Sequence[str],
+        *,
+        start: date,
+        end: date,
+    ) -> MarketDataBatch:
+        import yfinance as yf
+
+        unique_symbols = tuple(dict.fromkeys(symbols))
+        try:
+            # Current signature and parameter semantics:
+            # https://ranaroussi.github.io/yfinance/reference/api/yfinance.download.html
+            downloaded = yf.download(
+                tickers=list(unique_symbols),
+                start=start.isoformat(),
+                end=end.isoformat(),
+                interval="1d",
+                group_by="ticker",
+                auto_adjust=False,
+                repair=False,
+                keepna=False,
+                progress=False,
+                threads=False,
+                timeout=20,
+                multi_level_index=True,
+            )
+        except Exception:
+            return MarketDataBatch(
+                histories={},
+                errors={symbol: "bulk_download_failed" for symbol in unique_symbols},
+            )
+
+        histories: dict[str, pd.DataFrame] = {}
+        errors: dict[str, str] = {}
+        for symbol in unique_symbols:
+            frame = _extract_downloaded_frame(downloaded, symbol, len(unique_symbols))
+            if frame.empty or "Close" not in frame.columns:
+                errors[symbol] = "no_daily_data"
+                continue
+            histories[symbol] = frame
+        return MarketDataBatch(histories=histories, errors=errors)
+
+
+class MemoryLeverageService:
+    """Fetch the reviewed registry and build one report without persistence."""
+
+    def __init__(
+        self,
+        provider: YFinanceMarketDataProvider | None = None,
+        instruments: Sequence[Instrument] | None = None,
+        definitions: Sequence[SeriesDefinition] | None = None,
+    ) -> None:
+        self.provider = provider or YFinanceMarketDataProvider()
+        self.instruments = tuple(instruments or default_instruments())
+        self.definitions = tuple(definitions or default_series_definitions())
+
+    def get_report(self, *, days: int) -> dict:
+        if days <= 0:
+            raise ValueError("days must be positive")
+        now = datetime.now(timezone.utc)
+        fx_symbols = [
+            _FX_TO_USD[item.currency.upper()][0]
+            for item in self.instruments
+            if item.currency.upper() in _FX_TO_USD
+        ]
+        symbols = [item.symbol for item in self.instruments]
+        symbols.extend(fx_symbols)
+        batch = self.provider.fetch(
+            tuple(dict.fromkeys(symbols)),
+            start=now.date() - timedelta(days=days + 7),
+            end=now.date() + timedelta(days=1),
+        )
+        return build_memory_leverage_report(
+            self.instruments,
+            self.definitions,
+            batch,
+            generated_at=now,
+        )

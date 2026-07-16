@@ -27,6 +27,7 @@ from .models import AnalyzeRequest
 from .analyzer import queue_analysis, get_job, list_jobs
 from .serenity import router as serenity_router
 from .data import router as data_router  # AIStockingNews M1-3a: 轻量数据 HTTP 接口
+from .quant import router as quant_router
 
 app = FastAPI(title="TradingAgents API", version="1.0")
 
@@ -76,3 +77,4 @@ def list_all_jobs():
 
 app.include_router(serenity_router)
 app.include_router(data_router)  # AIStockingNews M1-3a
+app.include_router(quant_router)
