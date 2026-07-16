@@ -1,0 +1,2 @@
+"""Deterministic quantitative research tools."""
+
