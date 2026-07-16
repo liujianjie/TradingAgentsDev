@@ -61,15 +61,27 @@ function Start-Python {
         Write-Host '  ❌ :28100 被非 Python 程序占用，请释放该端口，或在 launcher.ps1 + appsettings.json 改用其它端口' -ForegroundColor Red
         return
     }
-    if (-not (Test-CommandExists 'uvicorn') -and -not (Test-CommandExists 'python')) {
-        Write-Host '  ❌ 未检测到 Python，请先按 docs/setup-python-env.md 安装' -ForegroundColor Red
+    $pythonApiCommand = $null
+    if (Test-CommandExists 'uv') {
+        # 在隔离环境中补齐 API 依赖，既不依赖全局 PATH，也不改写项目 uv.lock。
+        $pythonApiCommand = 'uv run --no-project --isolated --with-editable . --with-requirements api/requirements-api.txt python -m uvicorn api.main:app --port 28100'
+    } elseif (Test-CommandExists 'python') {
+        # 使用模块入口，避免 python 可用但 Scripts 目录未加入 PATH 时找不到 uvicorn.exe。
+        & python -m uvicorn --version *> $null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host '  ❌ 当前 Python 未安装 API 依赖，请运行：python -m pip install -r api/requirements-api.txt' -ForegroundColor Red
+            return
+        }
+        $pythonApiCommand = 'python -m uvicorn api.main:app --port 28100'
+    } else {
+        Write-Host '  ❌ 未检测到 uv 或 Python，请先按 docs/setup-python-env.md 安装' -ForegroundColor Red
         return
     }
     Write-Host '  启动 Python FastAPI on :28100 ...' -ForegroundColor Green
     Start-Process -FilePath 'powershell.exe' -ArgumentList @(
         '-NoExit', '-NoProfile',
         '-Command',
-        "Set-Location '$PYTHON_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - Python API :28100'; uvicorn api.main:app --port 28100"
+        "Set-Location '$PYTHON_CWD'; `$Host.UI.RawUI.WindowTitle='TradingAgents - Python API :28100'; $pythonApiCommand"
     ) | Out-Null
 }
 
