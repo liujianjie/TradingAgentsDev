@@ -58,6 +58,16 @@ def test_ratio_uses_raw_turnover_and_exposes_leverage_weighted_variant():
 
     series = report["series"][0]
     assert [point["ratio"] for point in series["points"]] == pytest.approx([0.7, 0.3])
+    assert series["points"][0] == {
+        "date": "2026-07-09",
+        "ratio": pytest.approx(0.7),
+        "change_1d": None,
+        "long_turnover_usd": pytest.approx(500),
+        "short_turnover_usd": pytest.approx(200),
+        "leverage_weighted_ratio": pytest.approx(1.2),
+        "underlying_turnover_usd": pytest.approx(1_000),
+    }
+    assert series["points"][1]["change_1d"] == pytest.approx(-0.4)
     assert series["latest"]["long_turnover_usd"] == pytest.approx(500)
     assert series["latest"]["short_turnover_usd"] == pytest.approx(100)
     assert series["latest"]["underlying_turnover_usd"] == pytest.approx(2_000)

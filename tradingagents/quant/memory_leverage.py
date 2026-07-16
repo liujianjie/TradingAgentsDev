@@ -219,22 +219,22 @@ def _build_series(
     ratio = (long_turnover + short_turnover) / denominator
     weighted_ratio = weighted / denominator
 
-    points = [
-        {"date": date.date().isoformat(), "ratio": float(value)}
-        for date, value in ratio.items()
-    ]
-    latest = None
-    if not ratio.empty:
-        change_1d = float(ratio.iloc[-1] - ratio.iloc[-2]) if len(ratio) > 1 else None
-        latest = {
-            "date": ratio.index[-1].date().isoformat(),
-            "ratio": float(ratio.iloc[-1]),
-            "change_1d": change_1d,
-            "long_turnover_usd": float(long_turnover.iloc[-1]),
-            "short_turnover_usd": float(short_turnover.iloc[-1]),
-            "leverage_weighted_ratio": float(weighted_ratio.iloc[-1]),
-            "underlying_turnover_usd": float(denominator.iloc[-1]),
-        }
+    ratio_change = ratio.diff()
+    points = []
+    for index, value in ratio.items():
+        change = ratio_change.loc[index]
+        points.append(
+            {
+                "date": index.date().isoformat(),
+                "ratio": float(value),
+                "change_1d": None if pd.isna(change) else float(change),
+                "long_turnover_usd": float(long_turnover.loc[index]),
+                "short_turnover_usd": float(short_turnover.loc[index]),
+                "leverage_weighted_ratio": float(weighted_ratio.loc[index]),
+                "underlying_turnover_usd": float(denominator.loc[index]),
+            }
+        )
+    latest = points[-1].copy() if points else None
     return {
         "id": definition.id,
         "company_id": definition.company_id,
