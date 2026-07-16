@@ -1,6 +1,6 @@
 # Spec：存储板块杠杆率（Memory-sector leverage ratio）
 
-> 状态：草案 v1，等待 review
+> 状态：v1 已批准
 > 分支：`codex/memory-leverage-ratio`
 > 日期：2026-07-16
 
@@ -8,7 +8,7 @@
 
 在现有 TradingAgentsDev 中增加一个只读量化工具，用公开日线行情复刻截图里的“存储杠杆率”，帮助研究者观察单股杠杆产品的成交热度相对正股成交热度是否异常放大。
 
-当前假设如下；review 通过后按这些假设实现：
+以下默认方案已于 2026-07-16 review 通过：
 
 1. 功能落在 Python FastAPI + UniApp H5/小程序前端，不接入 LLM，也不改变现有 TradingAgents/Serenity 工作流。
 2. v1 使用项目已经依赖的 `yfinance==1.4.1` 拉取 Yahoo Finance 日线 OHLCV 和外汇日线，不新增付费数据源或 API Key。
@@ -251,8 +251,8 @@ Vue `onMounted` 用于首屏请求，canvas 仅在组件挂载后创建；依据
 5. H5 页面在移动端和桌面端可用，构建与浏览器验证通过。
 6. 不影响现有 `/api/v1/analyze`、`/api/v1/serenity/*` 与已有测试。
 
-## 12. Open questions（需要 review）
+## 12. Review 结论
 
-1. 是否同意 v1 使用 Yahoo/yfinance 免费研究数据，而不是接 Bloomberg/交易所付费源？
-2. 独立页面从“产业链研究”页进入是否合适，还是希望直接占用底部 Tab？
-3. 是否接受全球口径按当前可验证注册表 best-effort 聚合，并把覆盖差异显式展示？
+1. v1 使用 Yahoo/yfinance 免费研究数据，不接 Bloomberg/交易所付费源。
+2. 独立页面从“产业链研究”页进入，不占用底部 Tab。
+3. 全球口径按当前可验证注册表 best-effort 聚合，并把覆盖差异显式展示。
