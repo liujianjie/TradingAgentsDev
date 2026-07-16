@@ -41,6 +41,64 @@ export function selectChartSeries(series) {
 }
 
 
+export function chartInteractionDates(series) {
+  if (!Array.isArray(series)) return []
+  return [...new Set(
+    series
+      .flatMap(item => item.points || [])
+      .map(point => point.date)
+      .filter(date => Number.isFinite(Date.parse(date))),
+  )].sort((left, right) => left.localeCompare(right))
+}
+
+
+export function chartSnapshotAtX(series, x, layout) {
+  const dates = chartInteractionDates(series)
+  const plotLeft = Number(layout?.plotLeft)
+  const plotRight = Number(layout?.plotRight)
+  const minTime = Number(layout?.minTime)
+  const maxTime = Number(layout?.maxTime)
+  if (
+    !dates.length
+    || !Number.isFinite(x)
+    || !Number.isFinite(plotLeft)
+    || !Number.isFinite(plotRight)
+    || plotRight <= plotLeft
+    || !Number.isFinite(minTime)
+    || !Number.isFinite(maxTime)
+  ) return null
+
+  const clampedX = Math.min(plotRight, Math.max(plotLeft, x))
+  const position = (clampedX - plotLeft) / (plotRight - plotLeft)
+  const targetTime = minTime + position * Math.max(0, maxTime - minTime)
+  const date = dates.reduce((nearest, candidate) => {
+    const nearestDistance = Math.abs(Date.parse(nearest) - targetTime)
+    const candidateDistance = Math.abs(Date.parse(candidate) - targetTime)
+    return candidateDistance < nearestDistance ? candidate : nearest
+  })
+
+  return {
+    date,
+    time: Date.parse(date),
+    rows: (series || []).map(item => {
+      const point = (item.points || []).find(entry => entry.date === date)
+      const rawRatio = point?.ratio
+      return {
+        id: item.id,
+        companyName: item.company_name,
+        scope: item.scope,
+        color: item.color,
+        ratio: rawRatio !== null
+          && rawRatio !== undefined
+          && Number.isFinite(Number(rawRatio))
+          ? Number(rawRatio)
+          : null,
+      }
+    }),
+  }
+}
+
+
 export function filterSeriesByDays(series, days, asOf) {
   if (!Array.isArray(series)) return []
   const parsedEnd = Date.parse(asOf)

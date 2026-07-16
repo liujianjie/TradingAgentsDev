@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 
 import {
   chartDomain,
+  chartInteractionDates,
   chartLinePattern,
   chartMonthTicks,
+  chartSnapshotAtX,
   chartYAxisTicks,
   displayCompanyName,
   filterSeriesByDays,
@@ -247,4 +249,85 @@ test('selected snapshot replaces card latest metrics with the chosen day', () =>
   assert.equal(selected[0].latest.date, '2026-07-14')
   assert.equal(selected[0].latest.long_turnover_usd, 20)
   assert.equal(source[0].latest.date, '2026-07-15')
+})
+
+
+test('chart interaction snaps to the nearest real trading date', () => {
+  const source = [
+    {
+      id: 'micron_all',
+      company_name: 'Micron',
+      scope: 'all',
+      color: '#123456',
+      points: [
+        { date: '2026-07-10', ratio: 0.10 },
+        { date: '2026-07-14', ratio: 0.20 },
+      ],
+    },
+    {
+      id: 'samsung_kr',
+      company_name: 'Samsung (KR)',
+      scope: 'kr',
+      color: '#654321',
+      points: [{ date: '2026-07-14', ratio: 0.40 }],
+    },
+  ]
+
+  const snapshot = chartSnapshotAtX(
+    source,
+    76,
+    { plotLeft: 10, plotRight: 110, minTime: Date.parse('2026-07-10'), maxTime: Date.parse('2026-07-14') },
+  )
+
+  assert.equal(snapshot.date, '2026-07-14')
+  assert.equal(snapshot.rows[0].ratio, 0.20)
+  assert.equal(snapshot.rows[1].ratio, 0.40)
+})
+
+
+test('chart interaction clamps outside positions and keeps missing series explicit', () => {
+  const source = [
+    {
+      id: 'sandisk_all',
+      company_name: 'SanDisk',
+      scope: 'all',
+      color: '#123456',
+      points: [
+        { date: '2026-07-10', ratio: 0.10 },
+        { date: '2026-07-14', ratio: 0.20 },
+      ],
+    },
+    {
+      id: 'kioxia_all',
+      company_name: 'Kioxia',
+      scope: 'all',
+      color: '#654321',
+      points: [{ date: '2026-07-14', ratio: 0 }],
+    },
+    {
+      id: 'micron_all',
+      company_name: 'Micron',
+      scope: 'all',
+      color: '#abcdef',
+      points: [{ date: '2026-07-14', ratio: null }],
+    },
+  ]
+
+  const earliest = chartSnapshotAtX(
+    source,
+    -100,
+    { plotLeft: 10, plotRight: 110, minTime: Date.parse('2026-07-10'), maxTime: Date.parse('2026-07-14') },
+  )
+  const latest = chartSnapshotAtX(
+    source,
+    999,
+    { plotLeft: 10, plotRight: 110, minTime: Date.parse('2026-07-10'), maxTime: Date.parse('2026-07-14') },
+  )
+
+  assert.deepEqual(chartInteractionDates(source), ['2026-07-10', '2026-07-14'])
+  assert.equal(earliest.date, '2026-07-10')
+  assert.equal(earliest.rows[1].ratio, null)
+  assert.equal(latest.date, '2026-07-14')
+  assert.equal(latest.rows[1].ratio, 0)
+  assert.equal(latest.rows[2].ratio, null)
 })
