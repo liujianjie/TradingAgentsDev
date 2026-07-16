@@ -22,6 +22,16 @@
         <text class="mode-hint">{{ modeHint }}</text>
       </view>
 
+      <button class="card quant-entry" @click="goMemoryLeverage">
+        <view class="quant-mark">ML</view>
+        <view class="quant-copy">
+          <text class="quant-eyebrow">量化工具箱</text>
+          <text class="quant-title">存储杠杆率</text>
+          <text class="quant-desc">跟踪存储公司杠杆产品相对正股的成交热度</text>
+        </view>
+        <text class="quant-arrow">›</text>
+      </button>
+
       <!-- 主体表单 -->
       <view class="card form-card">
         <view class="field">
@@ -183,6 +193,10 @@ function openReport(jobId) {
   uni.navigateTo({ url: `/pages/serenity/report?jobId=${jobId}` })
 }
 
+function goMemoryLeverage() {
+  uni.navigateTo({ url: '/pages/quant/memory-leverage' })
+}
+
 function recentTitle(j) {
   const req = j.request || {}
   if (req.theme) return req.theme
@@ -227,6 +241,37 @@ onShow(() => { loadRecent() })
 }
 
 .mode-card, .form-card, .recent-card { padding: 32rpx; margin-bottom: 24rpx; }
+
+.quant-entry {
+  width: 100%;
+  min-height: 152rpx;
+  display: flex;
+  align-items: center;
+  margin: 0 0 24rpx;
+  padding: 26rpx 28rpx;
+  border: 1rpx solid rgba(79, 110, 247, .14);
+  text-align: left;
+  line-height: 1.4;
+}
+.quant-entry::after { border: 0; }
+.quant-mark {
+  width: 74rpx;
+  height: 74rpx;
+  flex: none;
+  border-radius: 22rpx;
+  background: linear-gradient(145deg, #4f6ef7, #8a6cf6);
+  color: #fff;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 74rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 20rpx rgba(79, 110, 247, .22);
+}
+.quant-copy { flex: 1; min-width: 0; margin-left: 22rpx; }
+.quant-eyebrow { display: block; color: $primary; font-size: 19rpx; font-weight: 800; letter-spacing: 2rpx; }
+.quant-title { display: block; margin-top: 2rpx; color: $text; font-size: 29rpx; font-weight: 800; }
+.quant-desc { display: block; margin-top: 4rpx; color: $text-3; font-size: 21rpx; }
+.quant-arrow { margin-left: 14rpx; color: $text-3; font-size: 42rpx; }
 
 .mode-row { display: flex; gap: 16rpx; flex-wrap: wrap; }
 .mode-chip {

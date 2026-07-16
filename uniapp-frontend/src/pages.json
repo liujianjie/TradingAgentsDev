@@ -47,6 +47,12 @@
       "style": {
         "navigationBarTitleText": "研究报告"
       }
+    },
+    {
+      "path": "pages/quant/memory-leverage",
+      "style": {
+        "navigationBarTitleText": "存储杠杆率"
+      }
     }
   ],
   "globalStyle": {
