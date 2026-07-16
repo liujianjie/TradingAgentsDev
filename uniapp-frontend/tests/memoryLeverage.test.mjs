@@ -6,8 +6,11 @@ import {
   chartLinePattern,
   chartMonthTicks,
   chartYAxisTicks,
+  formatPercent,
   formatRatio,
   formatUsd,
+  leverageMetrics,
+  leverageProductCount,
   layoutEndLabels,
   selectChartSeries,
   selectMemorySeries,
@@ -112,8 +115,44 @@ test('direct end labels are separated when latest values cluster', () => {
 test('formatters keep ratios and large dollar turnover scannable', () => {
   assert.equal(formatRatio(0.10384), '0.104')
   assert.equal(formatRatio(null), '—')
+  assert.equal(formatPercent(0.8123), '81.2%')
+  assert.equal(formatPercent(null), '—')
   assert.equal(formatUsd(1_591_000_000), '$1.59B')
   assert.equal(formatUsd(243_000_000), '$243M')
+})
+
+
+test('latest leverage metrics expose total turnover and long-short composition', () => {
+  const metrics = leverageMetrics({
+    long_turnover_usd: 20,
+    short_turnover_usd: 10,
+    underlying_turnover_usd: 100,
+  })
+
+  assert.equal(metrics.totalTurnoverUsd, 30)
+  assert.equal(metrics.longShare, 2 / 3)
+  assert.equal(metrics.shortShare, 1 / 3)
+  assert.equal(metrics.turnoverDifferenceUsd, -70)
+})
+
+
+test('product count follows the selected global or Korea-only scope', () => {
+  const coverage = [
+    { company_id: 'sk_hynix', role: 'leveraged', venue: 'KRX', status: 'ok' },
+    { company_id: 'sk_hynix', role: 'leveraged', venue: 'HKEX', status: 'ok' },
+    { company_id: 'sk_hynix', role: 'leveraged', venue: 'NYSE', status: 'missing' },
+    { company_id: 'sk_hynix', role: 'underlying', venue: 'KRX', status: 'ok' },
+    { company_id: 'samsung', role: 'leveraged', venue: 'KRX', status: 'ok' },
+  ]
+
+  assert.equal(
+    leverageProductCount(coverage, { company_id: 'sk_hynix', scope: 'all' }),
+    2,
+  )
+  assert.equal(
+    leverageProductCount(coverage, { company_id: 'sk_hynix', scope: 'kr' }),
+    1,
+  )
 })
 
 

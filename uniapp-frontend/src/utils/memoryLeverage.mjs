@@ -46,6 +46,11 @@ export function formatRatio(value) {
 }
 
 
+export function formatPercent(value) {
+  return Number.isFinite(value) ? `${(value * 100).toFixed(1)}%` : '—'
+}
+
+
 function compact(value, divisor, suffix, digits) {
   const number = Number((value / divisor).toFixed(digits))
   return `$${number}${suffix}`
@@ -59,6 +64,38 @@ export function formatUsd(value) {
   if (absolute >= 1_000_000) return compact(value, 1_000_000, 'M', 0)
   if (absolute >= 1_000) return compact(value, 1_000, 'K', 0)
   return `$${Math.round(value)}`
+}
+
+
+export function leverageMetrics(latest) {
+  const longTurnoverUsd = Number.isFinite(latest?.long_turnover_usd)
+    ? latest.long_turnover_usd
+    : 0
+  const shortTurnoverUsd = Number.isFinite(latest?.short_turnover_usd)
+    ? latest.short_turnover_usd
+    : 0
+  const underlyingTurnoverUsd = Number.isFinite(latest?.underlying_turnover_usd)
+    ? latest.underlying_turnover_usd
+    : 0
+  const totalTurnoverUsd = longTurnoverUsd + shortTurnoverUsd
+
+  return {
+    totalTurnoverUsd,
+    longShare: totalTurnoverUsd > 0 ? longTurnoverUsd / totalTurnoverUsd : null,
+    shortShare: totalTurnoverUsd > 0 ? shortTurnoverUsd / totalTurnoverUsd : null,
+    turnoverDifferenceUsd: totalTurnoverUsd - underlyingTurnoverUsd,
+  }
+}
+
+
+export function leverageProductCount(coverage, item) {
+  if (!Array.isArray(coverage) || !item?.company_id) return 0
+  return coverage.filter(row =>
+    row.company_id === item.company_id
+    && row.role === 'leveraged'
+    && row.status === 'ok'
+    && (item.scope !== 'kr' || row.venue === 'KRX')
+  ).length
 }
 
 
